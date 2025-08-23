@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.globemed.model.Report" table="reports">
+        <id name="id" type="long" column="id">
+            <generator class="native"/>
+        </id>
+        <property name="type" type="string" column="type" not-null="true"/>  <!-- Enum as string -->
+        <property name="content" type="text" column="content" not-null="true"/>
+        <property name="generatedAt" type="timestamp" column="generated_at"/>
+        <many-to-one name="patient" class="com.globemed.model.Patient" column="patient_id"/>
+        <many-to-one name="bill" class="com.globemed.model.Bill" column="bill_id"/>
+    </class>
+</hibernate-mapping>

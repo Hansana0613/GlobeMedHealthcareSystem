@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.globemed.model.Staff" table="staff">
+        <id name="id" type="long" column="id">
+            <generator class="native"/>
+        </id>
+        <property name="name" type="string" column="name" not-null="true"/>
+        <many-to-one name="role" class="com.globemed.model.Role" column="role_id" not-null="true"/>
+        <property name="username" type="string" column="username" unique="true" not-null="true"/>
+        <property name="password" type="string" column="password" not-null="true"/>
+        <property name="email" type="string" column="email"/>
+    </class>
+</hibernate-mapping>
