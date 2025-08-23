@@ -1,5 +1,6 @@
 package com.globmed.view;
 
+import com.globmed.service.PatientService;
 import javax.swing.*;
 
 /**
@@ -7,6 +8,8 @@ import javax.swing.*;
  * @author Hansana
  */
 public class LoginFrame extends JFrame {
+
+    private PatientService patientService = new PatientService();
 
     public LoginFrame() {
         initComponents();
@@ -77,8 +80,21 @@ public class LoginFrame extends JFrame {
         );
 
         pack();
+        loginButton.addActionListener(evt -> loginButtonActionPerformed(evt));
     } // </editor-fold>
-   
+
+    private void loginButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        String username = usernameField.getText();
+        String password = new String(passwordField.getPassword());
+        String role = (String) roleComboBox.getSelectedItem();
+        if (username.equals("carol_admin") && password.equals("hashedpass3")) { // Simple check
+            new MainDashboardFrame().setVisible(true);
+            this.dispose();
+        } else {
+            JOptionPane.showMessageDialog(this, "Invalid credentials.");
+        }
+    }
+
     // Variables declaration
     private JLabel jLabel1;
     private JLabel jLabel2;

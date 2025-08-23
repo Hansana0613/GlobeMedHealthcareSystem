@@ -11,6 +11,12 @@ public class MainDashboardFrame extends JFrame {
     public MainDashboardFrame() {
         initComponents();
         setLocationRelativeTo(null); // Center on screen
+        // Simulate role-based visibility (e.g., Admin sees all)
+        String role = "Admin"; // Get from LoginFrame later
+        if (!role.equals("Admin")) {
+            tabbedPane.remove(billingPanel);
+            tabbedPane.remove(staffPanel);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -36,12 +42,12 @@ public class MainDashboardFrame extends JFrame {
         GroupLayout layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addComponent(tabbedPane, GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE)
+                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addComponent(tabbedPane, GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addComponent(tabbedPane, GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)
+                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addComponent(tabbedPane, GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)
         );
 
         pack();
