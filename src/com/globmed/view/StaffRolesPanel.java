@@ -1,5 +1,7 @@
 package com.globmed.view;
 
+import com.globmed.patterns.composite.RoleComponent;
+import com.globmed.service.RoleService;
 import javax.swing.*;
 
 /**
@@ -7,6 +9,8 @@ import javax.swing.*;
  * @author Hansana
  */
 public class StaffRolesPanel extends JPanel {
+
+    private RoleService roleService = new RoleService();
 
     public StaffRolesPanel() {
         initComponents();
@@ -33,69 +37,85 @@ public class StaffRolesPanel extends JPanel {
 
         jLabel2.setText("Role:");
 
-        roleComboBox.setModel(new DefaultComboBoxModel<>(new String[] { "Admin", "Doctor", "Nurse", "Pharmacist" }));
+        roleComboBox.setModel(new DefaultComboBoxModel<>(new String[]{"Admin", "Doctor", "Nurse", "Pharmacist"}));
 
         jLabel3.setText("Permissions:");
 
         permissionList.setModel(new AbstractListModel<String>() {
-            String[] strings = { "View Patient Records", "Edit Patient Records", "Schedule Appointments", "Process Bills", "Generate Reports" };
-            public int getSize() { return strings.length; }
-            public String getElementAt(int i) { return strings[i]; }
+            String[] strings = {"View Patient Records", "Edit Patient Records", "Schedule Appointments", "Process Bills", "Generate Reports"};
+
+            public int getSize() {
+                return strings.length;
+            }
+
+            public String getElementAt(int i) {
+                return strings[i];
+            }
         });
         jScrollPane2.setViewportView(permissionList);
 
         addStaffButton.setText("Add Staff");
 
         roleTable.setModel(new javax.swing.table.DefaultTableModel(
-            new Object[][] {},
-            new String[] {"ID", "Name", "Role", "Permissions"}
+                new Object[][]{},
+                new String[]{"ID", "Name", "Role", "Permissions"}
         ));
         jScrollPane1.setViewportView(roleTable);
 
         GroupLayout layout = new GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel1)
-                    .addComponent(jLabel2)
-                    .addComponent(jLabel3))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING, false)
-                    .addComponent(staffNameField)
-                    .addComponent(roleComboBox, 0, 150, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
-                    .addComponent(addStaffButton))
-                .addGap(18, 18, 18)
-                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
-                .addContainerGap())
+                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel1)
+                                        .addComponent(jLabel2)
+                                        .addComponent(jLabel3))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING, false)
+                                        .addComponent(staffNameField)
+                                        .addComponent(roleComboBox, 0, 150, Short.MAX_VALUE)
+                                        .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
+                                        .addComponent(addStaffButton))
+                                .addGap(18, 18, 18)
+                                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
+                                .addContainerGap())
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
-                    .addComponent(staffNameField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel2)
-                    .addComponent(roleComboBox, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel3)
-                    .addComponent(jScrollPane2, GroupLayout.PREFERRED_SIZE, 100, GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addComponent(addStaffButton)
-                .addContainerGap(50, Short.MAX_VALUE))
-            .addGroup(layout.createSequentialGroup()
-                .addGap(10, 10, 10)
-                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
-                .addContainerGap())
+                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel1)
+                                        .addComponent(staffNameField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel2)
+                                        .addComponent(roleComboBox, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel3)
+                                        .addComponent(jScrollPane2, GroupLayout.PREFERRED_SIZE, 100, GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addComponent(addStaffButton)
+                                .addContainerGap(50, Short.MAX_VALUE))
+                        .addGroup(layout.createSequentialGroup()
+                                .addGap(10, 10, 10)
+                                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
+                                .addContainerGap())
         );
+        addStaffButton.addActionListener(evt -> addStaffButtonActionPerformed(evt));
     } // </editor-fold>
+
+    private void addStaffButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        String staffName = staffNameField.getText();
+        String roleName = (String) roleComboBox.getSelectedItem();
+        RoleComponent role = roleService.createRole(roleName);
+        if (roleService.checkPermission(role, "Edit Patients")) {
+            System.out.println(staffName + " added with role " + roleName);
+        }
+    }
 
     // Variables declaration
     private JButton addStaffButton;

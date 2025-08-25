@@ -1,5 +1,7 @@
 package com.globmed.model;
 
+import com.globmed.patterns.visitor.Element;
+import com.globmed.patterns.visitor.Visitor;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,7 +9,7 @@ import java.util.List;
  *
  * @author Hansana
  */
-public class Bill {
+public class Bill implements Element {
 
     private Long id;
     private Appointment appointment;
@@ -71,5 +73,10 @@ public class Bill {
 
     public void setItems(List<BillItem> items) {
         this.items = items;
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        visitor.visitBill(this);
     }
 }

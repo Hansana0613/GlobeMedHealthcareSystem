@@ -1,6 +1,7 @@
 package com.globmed.view;
 
 import com.globmed.service.PatientService;
+import com.globmed.service.SecurityService;
 import javax.swing.*;
 
 /**
@@ -9,7 +10,7 @@ import javax.swing.*;
  */
 public class LoginFrame extends JFrame {
 
-    private PatientService patientService = new PatientService();
+    private SecurityService securityService = new SecurityService();
 
     public LoginFrame() {
         initComponents();
@@ -87,7 +88,8 @@ public class LoginFrame extends JFrame {
         String username = usernameField.getText();
         String password = new String(passwordField.getPassword());
         String role = (String) roleComboBox.getSelectedItem();
-        if (username.equals("carol_admin") && password.equals("hashedpass3")) { // Simple check
+        String secureInput = securityService.secureExecute(username + ":" + password + ":" + role);
+        if (secureInput.contains("carol_admin:hashedpass3:Admin")) { // Placeholder check
             new MainDashboardFrame().setVisible(true);
             this.dispose();
         } else {

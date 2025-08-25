@@ -14,7 +14,7 @@ public class Main {
     public static void main(String[] args) throws UnsupportedLookAndFeelException {
         UIManager.setLookAndFeel(new FlatIntelliJLaf());
         java.awt.EventQueue.invokeLater(() -> {
-            new MainDashboardFrame().setVisible(true);
+            new LoginFrame().setVisible(true);
         });
     }
 }

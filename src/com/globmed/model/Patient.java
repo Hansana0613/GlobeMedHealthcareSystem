@@ -1,12 +1,15 @@
 package com.globmed.model;
 
+import com.globmed.patterns.prototype.Prototype;
+import com.globmed.patterns.visitor.Element;
+import com.globmed.patterns.visitor.Visitor;
 import java.util.Date;
 
 /**
  *
  * @author Hansana
  */
-public class Patient {
+public class Patient implements Element, Prototype {
 
     private Long id;
     private String name;
@@ -66,5 +69,22 @@ public class Patient {
 
     public void setMedicalHistory(String medicalHistory) {
         this.medicalHistory = medicalHistory;
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        visitor.visitPatient(this);
+    }
+
+    @Override
+    public Prototype clone() {
+        Patient clone = new Patient();
+        clone.setId(this.id);
+        clone.setName(this.name);
+        clone.setDob(this.dob != null ? new Date(this.dob.getTime()) : null);
+        clone.setAddress(this.address);
+        clone.setPhone(this.phone);
+        clone.setMedicalHistory(this.medicalHistory);
+        return clone;
     }
 }

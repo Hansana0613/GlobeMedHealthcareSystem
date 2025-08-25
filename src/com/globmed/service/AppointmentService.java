@@ -13,6 +13,7 @@ import com.globmed.patterns.mediator.StaffColleague;
  * @author Hansana
  */
 public class AppointmentService {
+
     private AppointmentDAO appointmentDAO = new AppointmentDAO();
     private Mediator mediator = new SchedulingMediator();
 

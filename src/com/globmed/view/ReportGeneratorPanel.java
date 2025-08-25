@@ -1,5 +1,8 @@
 package com.globmed.view;
 
+import com.globmed.model.Bill;
+import com.globmed.model.Patient;
+import com.globmed.service.ReportService;
 import javax.swing.*;
 
 /**
@@ -7,6 +10,8 @@ import javax.swing.*;
  * @author Hansana
  */
 public class ReportGeneratorPanel extends JPanel {
+
+    private ReportService reportService = new ReportService();
 
     public ReportGeneratorPanel() {
         initComponents();
@@ -28,11 +33,11 @@ public class ReportGeneratorPanel extends JPanel {
 
         jLabel1.setText("Report Type:");
 
-        reportTypeComboBox.setModel(new DefaultComboBoxModel<>(new String[] { "Treatment Summary", "Diagnostic Results", "Financial" }));
+        reportTypeComboBox.setModel(new DefaultComboBoxModel<>(new String[]{"Treatment Summary", "Diagnostic Results", "Financial"}));
 
         jLabel2.setText("Patient:");
 
-        patientComboBox.setModel(new DefaultComboBoxModel<>(new String[] { "John Doe", "Jane Smith" }));
+        patientComboBox.setModel(new DefaultComboBoxModel<>(new String[]{"John Doe", "Jane Smith"}));
 
         generateButton.setText("Generate Report");
 
@@ -43,41 +48,56 @@ public class ReportGeneratorPanel extends JPanel {
         GroupLayout layout = new GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel1)
-                    .addComponent(jLabel2))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING, false)
-                    .addComponent(reportTypeComboBox, 0, 150, Short.MAX_VALUE)
-                    .addComponent(patientComboBox, 0, 150, Short.MAX_VALUE)
-                    .addComponent(generateButton))
-                .addGap(18, 18, 18)
-                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
-                .addContainerGap())
+                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel1)
+                                        .addComponent(jLabel2))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING, false)
+                                        .addComponent(reportTypeComboBox, 0, 150, Short.MAX_VALUE)
+                                        .addComponent(patientComboBox, 0, 150, Short.MAX_VALUE)
+                                        .addComponent(generateButton))
+                                .addGap(18, 18, 18)
+                                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
+                                .addContainerGap())
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
-                    .addComponent(reportTypeComboBox, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel2)
-                    .addComponent(patientComboBox, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addComponent(generateButton)
-                .addContainerGap(50, Short.MAX_VALUE))
-            .addGroup(layout.createSequentialGroup()
-                .addGap(10, 10, 10)
-                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
-                .addContainerGap())
+                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel1)
+                                        .addComponent(reportTypeComboBox, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel2)
+                                        .addComponent(patientComboBox, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addComponent(generateButton)
+                                .addContainerGap(50, Short.MAX_VALUE))
+                        .addGroup(layout.createSequentialGroup()
+                                .addGap(10, 10, 10)
+                                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
+                                .addContainerGap())
         );
+        generateButton.addActionListener(evt -> generateButtonActionPerformed(evt));
     } // </editor-fold>
+
+    private void generateButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        String type = (String) reportTypeComboBox.getSelectedItem();
+        String patientName = (String) patientComboBox.getSelectedItem();
+        if ("Treatment Summary".equals(type)) {
+            Patient patient = new Patient();
+            patient.setName(patientName);
+            reportService.generateReport(patient);
+        } else if ("Financial".equals(type)) {
+            Bill bill = new Bill();
+            bill.setTotalAmount(150.0);
+            reportService.generateReport(bill);
+        }
+    }
 
     // Variables declaration
     private JButton generateButton;

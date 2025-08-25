@@ -1,5 +1,6 @@
 package com.globmed.view;
 
+import com.globmed.model.Appointment;
 import com.globmed.model.Bill;
 import com.globmed.service.BillingService;
 import javax.swing.*;
@@ -125,12 +126,14 @@ public class BillingClaimsPanel extends JPanel {
         String item = (String) itemComboBox.getSelectedItem();
         double cost = Double.parseDouble(costField.getText());
         model.addRow(new Object[]{item, cost});
-        totalLabel.setText("Total: $" + (Double.parseDouble(totalLabel.getText().replace("Total: $", "")) + cost));
+        double total = model.getRowCount() * cost; // Simple total
+        totalLabel.setText("Total: $" + total);
     }
 
     private void processClaimButtonActionPerformed(java.awt.event.ActionEvent evt) {
-        // Simulate bill creation
-        Bill bill = billingService.createBill("Sample Bill");
+        // Simulate appointment
+        Appointment appt = new Appointment();
+        Bill bill = billingService.createBill(appt);
         if (billingService.processClaim(bill)) {
             System.out.println("Claim processed.");
         }

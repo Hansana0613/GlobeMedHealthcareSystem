@@ -1,7 +1,9 @@
 package com.globmed.service;
 
 import com.globmed.dao.BillDAO;
+import com.globmed.model.Appointment;
 import com.globmed.model.Bill;
+import com.globmed.patterns.builder.BillBuilder;
 import com.globmed.patterns.chain.ApproverHandler;
 import com.globmed.patterns.chain.BillingHandler;
 import com.globmed.patterns.chain.Handler;
@@ -25,16 +27,14 @@ public class BillingService {
         claimChain.setNext(new ApproverHandler());
     }
 
-    public Bill createBill(String description) {
-        Composite bill = new Composite(description);
-        // Add sample items
-        bill.add(new Leaf("Consultation", 50.0));
-        bill.add(new Leaf("Treatment", 100.0));
-        Bill model = new Bill();
-        model.setTotalAmount(bill.getCost());
-        model.setInsuranceDetails("Insurance Co X");
-        billDAO.save(model);
-        return model;
+    public Bill createBill(Appointment appointment) {
+        BillBuilder builder = new BillBuilder()
+                .setAppointment(appointment)
+                .addItem("Consultation", 50.0)
+                .addItem("Treatment", 100.0)
+                .setTotalAmount(150.0)
+                .setInsuranceDetails("Insurance Co X");
+        return builder.build();
     }
 
     public boolean processClaim(Bill bill) {

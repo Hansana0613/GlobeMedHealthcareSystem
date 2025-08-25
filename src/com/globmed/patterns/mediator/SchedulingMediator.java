@@ -11,10 +11,6 @@ public class SchedulingMediator implements Mediator {
 
     private List<Colleague> colleagues = new ArrayList<>();
 
-    public void addColleague(Colleague colleague) {
-        colleagues.add(colleague);
-    }
-
     @Override
     public void bookAppointment(String patient, String staff, String time, String location) {
         if (!checkConflict(time, location)) {
@@ -31,5 +27,10 @@ public class SchedulingMediator implements Mediator {
     public boolean checkConflict(String time, String location) {
         // Simulate conflict check (e.g., against existing appointments)
         return true; // Placeholder, implement DB check later
+    }
+
+    @Override
+    public void addColleague(Colleague colleague) {
+        colleagues.add(colleague);
     }
 }

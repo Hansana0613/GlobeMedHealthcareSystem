@@ -3,12 +3,39 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/view/MainDashboardFrame.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/mediator/SchedulingMediator.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/memento/Caretaker.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/mediator/Colleague.java</file>
             <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/view/BillingClaimsPanel.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/service/RoleService.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/visitor/SummaryVisitor.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/model/Patient.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/mediator/Mediator.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/prototype/Prototype.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/view/ReportGeneratorPanel.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/service/ReportService.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/service/SecurityService.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/main/Main.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/decorator/ServiceDecorator.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/flyweight/PermissionFlyweightFactory.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/view/StaffRolesPanel.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/composite/RoleComponent.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/decorator/Service.java</file>
             <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/service/AppointmentService.java</file>
-            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/view/PatientManagementPanel.java</file>
-            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/view/AppointmentSchedulerPanel.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/visitor/Visitor.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/model/Bill.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/decorator/BaseService.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/flyweight/PermissionFlyweight.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/composite/PermissionLeaf.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/decorator/EncryptionDecorator.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/memento/Originator.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/memento/Memento.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/decorator/LoggingDecorator.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/composite/RoleComposite.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/builder/BillBuilder.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/patterns/visitor/Element.java</file>
             <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/view/LoginFrame.java</file>
+            <file>file:/C:/Users/Hansana/OneDrive%20-%20Birmingham%20City%20University/Documents/NetBeansProjects/GlobeMedHealthcareSystem/src/com/globmed/service/BillingService.java</file>
         </group>
     </open-files>
 </project-private>
