@@ -8,12 +8,10 @@ import javax.swing.*;
  */
 public class MainDashboardFrame extends JFrame {
 
-    public MainDashboardFrame() {
+    public MainDashboardFrame(String role) {
         initComponents();
-        setLocationRelativeTo(null); // Center on screen
-        // Simulate role-based visibility (e.g., Admin sees all)
-        String role = "Admin"; // Get from LoginFrame later
-        if (!role.equals("Admin")) {
+        setLocationRelativeTo(null);
+        if (!"Admin".equals(role)) {
             tabbedPane.remove(billingPanel);
             tabbedPane.remove(staffPanel);
         }

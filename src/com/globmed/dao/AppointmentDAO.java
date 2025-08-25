@@ -2,7 +2,10 @@ package com.globmed.dao;
 
 import com.globmed.model.Appointment;
 import com.globmed.model.HibernateUtil;
+import java.util.ArrayList;
+import java.util.List;
 import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
 /**
@@ -11,13 +14,14 @@ import org.hibernate.Transaction;
  */
 public class AppointmentDAO {
 
+    private static final SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+
     public void save(Appointment appointment) {
-        Session session = null;
+        Session session = sessionFactory.openSession();
         Transaction tx = null;
         try {
-            session = HibernateUtil.getSessionFactory().openSession();
             tx = session.beginTransaction();
-            session.save(appointment);
+            session.saveOrUpdate(appointment);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) {
@@ -25,24 +29,27 @@ public class AppointmentDAO {
             }
             e.printStackTrace();
         } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
+            session.close();
         }
     }
 
     public Appointment findById(Long id) {
-        Session session = null;
         try {
-            session = HibernateUtil.getSessionFactory().openSession();
+            Session session = sessionFactory.openSession();
             return (Appointment) session.get(Appointment.class, id);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
+        }
+    }
+
+    public List<Appointment> findAll() {
+        try {
+            Session session = sessionFactory.openSession();
+            return session.createQuery("FROM Appointment").list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
         }
     }
 }

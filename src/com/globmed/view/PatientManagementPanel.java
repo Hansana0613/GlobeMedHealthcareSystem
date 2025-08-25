@@ -1,6 +1,9 @@
 package com.globmed.view;
 
+import com.globmed.dao.PatientDAO;
+import com.globmed.model.Patient;
 import com.globmed.service.PatientService;
+import com.toedter.calendar.JDateChooser;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
@@ -11,6 +14,7 @@ import javax.swing.table.DefaultTableModel;
 public class PatientManagementPanel extends JPanel {
 
     private PatientService patientService = new PatientService();
+    private PatientDAO patientDAO = new PatientDAO();
 
     public PatientManagementPanel() {
         initComponents();
@@ -18,10 +22,11 @@ public class PatientManagementPanel extends JPanel {
     }
 
     private void loadPatients() {
-        // Simulate data
         DefaultTableModel model = (DefaultTableModel) patientTable.getModel();
-        model.addRow(new Object[]{1L, "John Doe", "1980-05-15", "123 Main St", "555-1234"});
-        // Add action for table selection to show details
+        model.setRowCount(0);
+        for (Patient p : patientDAO.findAll()) {
+            model.addRow(new Object[]{p.getId(), p.getName(), p.getDob(), p.getAddress(), p.getPhone()});
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -31,7 +36,7 @@ public class PatientManagementPanel extends JPanel {
         jLabel1 = new JLabel();
         nameField = new JTextField();
         jLabel2 = new JLabel();
-        dobField = new JTextField();
+        dobChooser = new JDateChooser(); // Replaced JTextField with JDateChooser
         jLabel3 = new JLabel();
         addressField = new JTextField();
         jLabel4 = new JLabel();
@@ -47,7 +52,7 @@ public class PatientManagementPanel extends JPanel {
 
         jLabel1.setText("Name:");
 
-        jLabel2.setText("Date of Birth (YYYY-MM-DD):");
+        jLabel2.setText("Date of Birth:");
 
         jLabel3.setText("Address:");
 
@@ -84,7 +89,7 @@ public class PatientManagementPanel extends JPanel {
                                 .addGap(18, 18, 18)
                                 .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
                                         .addComponent(nameField)
-                                        .addComponent(dobField)
+                                        .addComponent(dobChooser, GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE) // Adjusted size
                                         .addComponent(addressField)
                                         .addComponent(phoneField)
                                         .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE))
@@ -104,9 +109,9 @@ public class PatientManagementPanel extends JPanel {
                                         .addComponent(nameField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                                         .addComponent(addButton))
                                 .addGap(18, 18, 18)
-                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
                                         .addComponent(jLabel2)
-                                        .addComponent(dobField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(dobChooser, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE) // Adjusted height
                                         .addComponent(editButton))
                                 .addGap(18, 18, 18)
                                 .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
@@ -124,12 +129,19 @@ public class PatientManagementPanel extends JPanel {
                                 .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
                                 .addContainerGap())
         );
+
         addButton.addActionListener(evt -> addButtonActionPerformed(evt));
     } // </editor-fold>
 
     private void addButtonActionPerformed(java.awt.event.ActionEvent evt) {
-        // Placeholder for adding patient
-        System.out.println("Add patient clicked.");
+        Patient patient = new Patient();
+        patient.setName(nameField.getText());
+        patient.setDob(new java.sql.Date(((JDateChooser) dobChooser).getDate().getTime())); // Convert to java.sql.Date
+        patient.setAddress(addressField.getText());
+        patient.setPhone(phoneField.getText());
+        patient.setMedicalHistory(historyField.getText());
+        patientDAO.save(patient);
+        loadPatients();
     }
 
     // Variables declaration
@@ -143,9 +155,9 @@ public class PatientManagementPanel extends JPanel {
     private JLabel jLabel4;
     private JLabel jLabel5;
     private JScrollPane jScrollPane1;
-    private JTextField dobField;
     private JTextField nameField;
     private JTextField phoneField;
+    private JDateChooser dobChooser; // Replaced dobField
     private JTable patientTable;
     // End of variables declaration
 }

@@ -2,7 +2,10 @@ package com.globmed.dao;
 
 import com.globmed.model.Bill;
 import com.globmed.model.HibernateUtil;
+import java.util.ArrayList;
+import java.util.List;
 import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
 /**
@@ -11,13 +14,14 @@ import org.hibernate.Transaction;
  */
 public class BillDAO {
 
+    private static final SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+
     public void save(Bill bill) {
-        Session session = null;
+        Session session = sessionFactory.openSession();
         Transaction tx = null;
         try {
-            session = HibernateUtil.getSessionFactory().openSession();
             tx = session.beginTransaction();
-            session.save(bill);
+            session.saveOrUpdate(bill);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) {
@@ -25,24 +29,27 @@ public class BillDAO {
             }
             e.printStackTrace();
         } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
+            session.close();
         }
     }
 
     public Bill findById(Long id) {
-        Session session = null;
         try {
-            session = HibernateUtil.getSessionFactory().openSession();
+            Session session = sessionFactory.openSession();
             return (Bill) session.get(Bill.class, id);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
+        }
+    }
+
+    public List<Bill> findAll() {
+        try {
+            Session session = sessionFactory.openSession();
+            return session.createQuery("FROM Bill").list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
         }
     }
 }

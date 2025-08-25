@@ -1,5 +1,7 @@
 package com.globmed.view;
 
+import com.globmed.dao.StaffDAO;
+import com.globmed.model.Staff;
 import com.globmed.service.PatientService;
 import com.globmed.service.SecurityService;
 import javax.swing.*;
@@ -11,6 +13,7 @@ import javax.swing.*;
 public class LoginFrame extends JFrame {
 
     private SecurityService securityService = new SecurityService();
+    private StaffDAO staffDAO = new StaffDAO();
 
     public LoginFrame() {
         initComponents();
@@ -88,9 +91,10 @@ public class LoginFrame extends JFrame {
         String username = usernameField.getText();
         String password = new String(passwordField.getPassword());
         String role = (String) roleComboBox.getSelectedItem();
-        String secureInput = securityService.secureExecute(username + ":" + password + ":" + role);
-        if (secureInput.contains("carol_admin:hashedpass3:Admin")) { // Placeholder check
-            new MainDashboardFrame().setVisible(true);
+        Staff staff = staffDAO.findByUsername(username);
+        if (staff != null && staff.getPassword().equals(password)) { // Replace with hashed check
+            String secureInput = securityService.secureExecute(username + ":" + role);
+            new MainDashboardFrame(staff.getRole().getName()).setVisible(true); // Pass role
             this.dispose();
         } else {
             JOptionPane.showMessageDialog(this, "Invalid credentials.");

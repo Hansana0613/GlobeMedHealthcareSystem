@@ -1,6 +1,8 @@
 package com.globmed.view;
 
 import com.globmed.service.AppointmentService;
+import com.toedter.calendar.JDateChooser;
+import java.text.SimpleDateFormat;
 import javax.swing.*;
 
 /**
@@ -24,7 +26,7 @@ public class AppointmentSchedulerPanel extends JPanel {
         jLabel2 = new JLabel();
         staffComboBox = new JComboBox<>();
         jLabel3 = new JLabel();
-        timeField = new JTextField();
+        timeChooser = new JDateChooser(); // Replaced JTextField with JDateChooser
         jLabel4 = new JLabel();
         locationField = new JTextField();
         scheduleButton = new JButton();
@@ -41,7 +43,7 @@ public class AppointmentSchedulerPanel extends JPanel {
 
         staffComboBox.setModel(new DefaultComboBoxModel<>(new String[]{"Dr. Alice Johnson", "Nurse Bob Lee"}));
 
-        jLabel3.setText("Time (YYYY-MM-DD HH:MM):");
+        jLabel3.setText("Time:");
 
         jLabel4.setText("Location:");
 
@@ -68,7 +70,7 @@ public class AppointmentSchedulerPanel extends JPanel {
                                 .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING, false)
                                         .addComponent(patientComboBox, 0, 150, Short.MAX_VALUE)
                                         .addComponent(staffComboBox, 0, 150, Short.MAX_VALUE)
-                                        .addComponent(timeField)
+                                        .addComponent(timeChooser, GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE) // Adjusted size
                                         .addComponent(locationField)
                                         .addComponent(scheduleButton, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                 .addGap(18, 18, 18)
@@ -87,9 +89,9 @@ public class AppointmentSchedulerPanel extends JPanel {
                                         .addComponent(jLabel2)
                                         .addComponent(staffComboBox, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
                                 .addGap(18, 18, 18)
-                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
                                         .addComponent(jLabel3)
-                                        .addComponent(timeField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+                                        .addComponent(timeChooser, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)) // Adjusted height
                                 .addGap(18, 18, 18)
                                 .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel4)
@@ -102,13 +104,14 @@ public class AppointmentSchedulerPanel extends JPanel {
                                 .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
                                 .addContainerGap())
         );
+
         scheduleButton.addActionListener(evt -> scheduleButtonActionPerformed(evt));
     } // </editor-fold>
 
     private void scheduleButtonActionPerformed(java.awt.event.ActionEvent evt) {
         String patient = (String) patientComboBox.getSelectedItem();
         String staff = (String) staffComboBox.getSelectedItem();
-        String time = timeField.getText();
+        String time = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(timeChooser.getDate()); // Format date
         String location = locationField.getText();
         appointmentService.bookAppointment(patient, staff, time, location);
     }
@@ -124,6 +127,6 @@ public class AppointmentSchedulerPanel extends JPanel {
     private JComboBox<String> patientComboBox;
     private JButton scheduleButton;
     private JComboBox<String> staffComboBox;
-    private JTextField timeField;
+    private JDateChooser timeChooser; // Replaced timeField
     // End of variables declaration
 }

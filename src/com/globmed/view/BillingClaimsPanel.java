@@ -117,6 +117,7 @@ public class BillingClaimsPanel extends JPanel {
                                 .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
                                 .addContainerGap())
         );
+
         addItemButton.addActionListener(evt -> addItemButtonActionPerformed(evt));
         processClaimButton.addActionListener(evt -> processClaimButtonActionPerformed(evt));
     } // </editor-fold>
@@ -126,13 +127,11 @@ public class BillingClaimsPanel extends JPanel {
         String item = (String) itemComboBox.getSelectedItem();
         double cost = Double.parseDouble(costField.getText());
         model.addRow(new Object[]{item, cost});
-        double total = model.getRowCount() * cost; // Simple total
-        totalLabel.setText("Total: $" + total);
+        totalLabel.setText("Total: $" + (Double.parseDouble(totalLabel.getText().replace("Total: $", "")) + cost));
     }
 
     private void processClaimButtonActionPerformed(java.awt.event.ActionEvent evt) {
-        // Simulate appointment
-        Appointment appt = new Appointment();
+        Appointment appt = new Appointment(); // Simulate appointment
         Bill bill = billingService.createBill(appt);
         if (billingService.processClaim(bill)) {
             System.out.println("Claim processed.");

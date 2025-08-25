@@ -8,19 +8,25 @@ import org.hibernate.cfg.Configuration;
  * @author Hansana
  */
 public class HibernateUtil {
+
     private static final SessionFactory sessionFactory;
 
     static {
         try {
-            // Load config and build factory
             sessionFactory = new Configuration().configure().buildSessionFactory();
-        } catch (Throwable ex) {
-            System.err.println("Failed to create sessionFactory object." + ex);
+        } catch (Exception ex) {
+            System.err.println("Initial SessionFactory creation failed: " + ex.getMessage());
             throw new ExceptionInInitializerError(ex);
         }
     }
 
     public static SessionFactory getSessionFactory() {
         return sessionFactory;
+    }
+
+    public static void shutdown() {
+        if (sessionFactory != null && !sessionFactory.isClosed()) {
+            sessionFactory.close();
+        }
     }
 }

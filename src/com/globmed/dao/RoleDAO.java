@@ -2,7 +2,10 @@ package com.globmed.dao;
 
 import com.globmed.model.HibernateUtil;
 import com.globmed.model.Role;
+import java.util.ArrayList;
+import java.util.List;
 import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
 /**
@@ -11,13 +14,14 @@ import org.hibernate.Transaction;
  */
 public class RoleDAO {
 
+    private static final SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+
     public void save(Role role) {
-        Session session = null;
+        Session session = sessionFactory.openSession();
         Transaction tx = null;
         try {
-            session = HibernateUtil.getSessionFactory().openSession();
             tx = session.beginTransaction();
-            session.save(role);
+            session.saveOrUpdate(role);
             tx.commit();
         } catch (Exception e) {
             if (tx != null) {
@@ -25,26 +29,29 @@ public class RoleDAO {
             }
             e.printStackTrace();
         } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
+            session.close();
         }
     }
 
     public Role findByName(String name) {
-        Session session = null;
         try {
-            session = HibernateUtil.getSessionFactory().openSession();
-            return (Role) session.createQuery("from Role r where r.name = :name")
+            Session session = sessionFactory.openSession();
+            return (Role) session.createQuery("FROM Role WHERE name = :name")
                     .setParameter("name", name)
                     .uniqueResult();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
+        }
+    }
+
+    public List<Role> findAll() {
+        try {
+            Session session = sessionFactory.openSession();
+            return session.createQuery("FROM Role").list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
         }
     }
 }
