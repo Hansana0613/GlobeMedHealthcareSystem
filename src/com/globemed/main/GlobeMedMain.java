@@ -7,6 +7,7 @@ package com.globemed.main;
 //import com.globemed.gui.MainFrame;
 import com.formdev.flatlaf.FlatIntelliJLaf;
 import com.globemed.database.DatabaseConnection;
+import com.globemed.gui.MainFrame;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.sql.SQLException;
@@ -35,15 +36,15 @@ public class GlobeMedMain {
         }
 
         // Launch GUI
-//        SwingUtilities.invokeLater(() -> {
-//            try {
-//                MainFrame frame = new MainFrame();
-//                frame.setVisible(true);
-//            } catch (Exception e) {
-//                System.err.println("Error launching application: " + e.getMessage());
-//                e.printStackTrace();
-//            }
-//        });
+        SwingUtilities.invokeLater(() -> {
+            try {
+                MainFrame frame = new MainFrame();
+                frame.setVisible(true);
+            } catch (Exception e) {
+                System.err.println("Error launching application: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
         // Shutdown hook to close database connection
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             DatabaseConnection.closeConnection();
