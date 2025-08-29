@@ -4,23 +4,26 @@
  */
 package com.globemed.gui;
 
-import com.globemed.database.*;
-import com.globemed.models.*;
-import com.globemed.patterns.composite.*;
-import com.globemed.patterns.chainofresponsibility.*;
-import com.globemed.patterns.decorator.*;
+import com.globemed.database.BillDAO;
+import com.globemed.database.AppointmentDAO;
+import com.globemed.database.PatientDAO;
+import com.globemed.models.Bill;
+import com.globemed.models.BillItem;
+import com.globemed.models.Appointment;
+import com.globemed.models.Patient;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
+import java.text.DecimalFormat;
+import java.time.format.DateTimeFormatter;
 
 /**
- * Billing Management Panel implementing Composite, Chain of Responsibility, and
- * Decorator patterns
  *
  * @author Hansana
  */
@@ -31,401 +34,859 @@ public class BillingPanel extends JPanel {
     private AppointmentDAO appointmentDAO;
     private PatientDAO patientDAO;
 
-    // GUI Components
-    private JTable billTable;
-    private DefaultTableModel billTableModel;
-    private JTable billItemTable;
-    private DefaultTableModel billItemTableModel;
+    // Components
+    private JTable billsTable;
+    private DefaultTableModel billsTableModel;
+    private JTable billItemsTable;
+    private DefaultTableModel billItemsTableModel;
 
-    private JComboBox<String> appointmentComboBox;
-    private JTextField insuranceField;
-    private JComboBox<String> claimStatusComboBox;
-    private JTextField totalAmountField;
-
-    // Bill item form
-    private JComboBox<String> itemTypeComboBox;
-    private JTextField descriptionField;
-    private JTextField costField;
-
-    private JButton createBillButton, addItemButton, removeItemButton;
-    private JButton processClaim, applyDiscountButton, calculateTotalButton;
+    private JTextField searchField;
+    private JComboBox<String> statusFilter;
+    private JButton searchButton;
     private JButton refreshButton;
 
-    private JTextArea claimProcessingArea;
+    // Bill management buttons
+    private JButton viewBillButton;
+    private JButton editBillButton;
+    private JButton deleteBillButton;
+    private JButton generateReportButton;
 
-    // Current bill being edited
-    private Long currentBillId = null;
-    private BillComposite currentBillComposite = null;
+    // Bill item management
+    private JButton addItemButton;
+    private JButton removeItemButton;
 
-    // Table columns
-    private final String[] billColumns = {"ID", "Appointment", "Patient", "Total", "Status", "Insurance"};
-    private final String[] itemColumns = {"ID", "Type", "Description", "Cost"};
+    // Bill details panel
+    private JPanel billDetailsPanel;
+    private JLabel billIdLabel;
+    private JLabel patientNameLabel;
+    private JLabel appointmentDateLabel;
+    private JLabel totalAmountLabel;
+    private JComboBox<String> claimStatusCombo;
+    private JTextArea insuranceDetailsArea;
 
-    // Item types
-    private final String[] itemTypes = {"CONSULTATION", "TREATMENT", "MEDICATION", "DIAGNOSTIC", "SURGERY", "THERAPY"};
-    private final String[] claimStatuses = {"PENDING", "APPROVED", "REJECTED", "PAID", "PROCESSING"};
+    // New bill item panel
+    private JPanel addItemPanel;
+    private JComboBox<String> itemTypeCombo;
+    private JTextField descriptionField;
+    private JTextField costField;
+    private JButton saveItemButton;
+    private JButton cancelItemButton;
+
+    private Bill currentBill;
+    private DecimalFormat currencyFormat;
 
     public BillingPanel(MainFrame parentFrame) {
         this.parentFrame = parentFrame;
         this.billDAO = new BillDAO();
         this.appointmentDAO = new AppointmentDAO();
         this.patientDAO = new PatientDAO();
+        this.currencyFormat = new DecimalFormat("$#,##0.00");
 
         initializeComponents();
         layoutComponents();
         setupEventHandlers();
+        loadBills();
     }
 
     private void initializeComponents() {
-        // Bills table
-        billTableModel = new DefaultTableModel(billColumns, 0) {
+        // Main table for bills
+        String[] billColumns = {"ID", "Patient", "Appointment Date", "Total Amount", "Status", "Insurance"};
+        billsTableModel = new DefaultTableModel(billColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        billTable = new JTable(billTableModel);
-        billTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        billTable.setRowHeight(25);
+        billsTable = new JTable(billsTableModel);
+        billsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        billsTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                loadSelectedBillDetails();
+            }
+        });
 
         // Bill items table
-        billItemTableModel = new DefaultTableModel(itemColumns, 0) {
+        String[] itemColumns = {"Type", "Description", "Cost"};
+        billItemsTableModel = new DefaultTableModel(itemColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        billItemTable = new JTable(billItemTableModel);
-        billItemTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        billItemTable.setRowHeight(25);
+        billItemsTable = new JTable(billItemsTableModel);
 
-        // Form components
-        appointmentComboBox = new JComboBox<>();
-        insuranceField = new JTextField(20);
-        claimStatusComboBox = new JComboBox<>(claimStatuses);
-        totalAmountField = new JTextField(10);
-        totalAmountField.setEditable(false);
-
-        // Bill item form
-        itemTypeComboBox = new JComboBox<>(itemTypes);
-        descriptionField = new JTextField(20);
-        costField = new JTextField(10);
-
-        // Buttons
-        createBillButton = new JButton("Create New Bill");
-        addItemButton = new JButton("Add Item");
-        removeItemButton = new JButton("Remove Item");
-        processClaim = new JButton("Process Insurance Claim");
-        applyDiscountButton = new JButton("Apply Discount");
-        calculateTotalButton = new JButton("Calculate Total");
+        // Search and filter components
+        searchField = new JTextField(20);
+        statusFilter = new JComboBox<>(new String[]{"All", "PENDING", "APPROVED", "REJECTED", "PAID"});
+        searchButton = new JButton("Search");
         refreshButton = new JButton("Refresh");
 
-        // Initially disable some buttons
-        removeItemButton.setEnabled(false);
-        processClaim.setEnabled(false);
+        // Button components
+        viewBillButton = new JButton("View Details");
+        editBillButton = new JButton("Edit Bill");
+        deleteBillButton = new JButton("Delete Bill");
+        generateReportButton = new JButton("Generate Report");
+        addItemButton = new JButton("Add Item");
+        removeItemButton = new JButton("Remove Item");
 
-        // Claim processing area
-        claimProcessingArea = new JTextArea(6, 40);
-        claimProcessingArea.setEditable(false);
-        claimProcessingArea.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        claimProcessingArea.setBackground(new Color(250, 250, 250));
+        // Bill details components
+        billIdLabel = new JLabel("N/A");
+        patientNameLabel = new JLabel("N/A");
+        appointmentDateLabel = new JLabel("N/A");
+        totalAmountLabel = new JLabel("$0.00");
+        claimStatusCombo = new JComboBox<>(new String[]{"PENDING", "APPROVED", "REJECTED", "PAID"});
+        insuranceDetailsArea = new JTextArea(3, 20);
+        insuranceDetailsArea.setLineWrap(true);
+        insuranceDetailsArea.setWrapStyleWord(true);
 
-        loadAppointmentComboBox();
-    }
+        // Add item components
+        itemTypeCombo = new JComboBox<>(new String[]{"CONSULTATION", "TREATMENT", "MEDICATION", "DIAGNOSTIC"});
+        descriptionField = new JTextField(15);
+        costField = new JTextField(10);
+        saveItemButton = new JButton("Save Item");
+        cancelItemButton = new JButton("Cancel");
 
-    private void loadAppointmentComboBox() {
-        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                try {
-                    List<Appointment> appointments = appointmentDAO.getAllAppointments();
-                    SwingUtilities.invokeLater(() -> {
-                        appointmentComboBox.removeAllItems();
-                        appointmentComboBox.addItem("Select Appointment");
-                        for (Appointment apt : appointments) {
-                            if ("COMPLETED".equals(apt.getStatus())) {
-                                appointmentComboBox.addItem(apt.getId() + " - Patient ID: " + apt.getPatientId()
-                                        + " (" + apt.getAppointmentTime().toLocalDate() + ")");
-                            }
-                        }
-                    });
-                } catch (SQLException e) {
-                    SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(BillingPanel.this,
-                                "Error loading appointments: " + e.getMessage(),
-                                "Database Error", JOptionPane.ERROR_MESSAGE);
-                    });
-                }
-                return null;
-            }
-        };
-        worker.execute();
+        // Initially disable buttons
+        updateButtonStates(false);
     }
 
     private void layoutComponents() {
         setLayout(new BorderLayout());
 
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        // Top panel - Search and filters
+        JPanel topPanel = createTopPanel();
+        add(topPanel, BorderLayout.NORTH);
 
-        JLabel titleLabel = new JLabel("Billing & Insurance Claims Management");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        headerPanel.add(titleLabel, BorderLayout.WEST);
+        // Center panel - Split pane with bills and details
+        JSplitPane centerSplitPane = createCenterPanel();
+        add(centerSplitPane, BorderLayout.CENTER);
 
-        JButton patternsDemo = new JButton("Show Patterns Demo");
-        patternsDemo.addActionListener(e -> demonstrateBillingPatterns());
-        headerPanel.add(patternsDemo, BorderLayout.EAST);
-
-        add(headerPanel, BorderLayout.NORTH);
-
-        // Main content - split into three sections
-        JPanel mainContent = new JPanel(new BorderLayout());
-
-        // Top: Bills table
-        JPanel billsPanel = new JPanel(new BorderLayout());
-        billsPanel.setBorder(BorderFactory.createTitledBorder("Bills Overview"));
-        billsPanel.setPreferredSize(new Dimension(0, 250));
-
-        JScrollPane billsScroll = new JScrollPane(billTable);
-        billsPanel.add(billsScroll, BorderLayout.CENTER);
-
-        JPanel billsButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        billsButtons.add(refreshButton);
-        billsButtons.add(processClaim);
-        billsPanel.add(billsButtons, BorderLayout.SOUTH);
-
-        mainContent.add(billsPanel, BorderLayout.NORTH);
-
-        // Center: Bill creation and item management
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        centerSplit.setDividerLocation(400);
-
-        // Left: Bill form
-        JPanel billFormPanel = createBillForm();
-        centerSplit.setLeftComponent(billFormPanel);
-
-        // Right: Bill items
-        JPanel itemsPanel = createBillItemsPanel();
-        centerSplit.setRightComponent(itemsPanel);
-
-        mainContent.add(centerSplit, BorderLayout.CENTER);
-
-        // Bottom: Claim processing
-        JPanel claimPanel = createClaimProcessingPanel();
-        mainContent.add(claimPanel, BorderLayout.SOUTH);
-
-        add(mainContent, BorderLayout.CENTER);
+        // Bottom panel - Action buttons
+        JPanel bottomPanel = createBottomPanel();
+        add(bottomPanel, BorderLayout.SOUTH);
     }
 
-    private JPanel createBillForm() {
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createTitledBorder("Bill Information"));
+    private JPanel createTopPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panel.setBorder(BorderFactory.createTitledBorder("Search & Filter"));
 
+        panel.add(new JLabel("Search:"));
+        panel.add(searchField);
+        panel.add(new JLabel("Status:"));
+        panel.add(statusFilter);
+        panel.add(searchButton);
+        panel.add(refreshButton);
+
+        return panel;
+    }
+
+    private JSplitPane createCenterPanel() {
+        // Left side - Bills table
+        JScrollPane billsScrollPane = new JScrollPane(billsTable);
+        billsScrollPane.setPreferredSize(new Dimension(600, 300));
+        billsScrollPane.setBorder(BorderFactory.createTitledBorder("Bills"));
+
+        // Right side - Bill details and items
+        JPanel rightPanel = new JPanel(new BorderLayout());
+
+        // Bill details panel
+        billDetailsPanel = createBillDetailsPanel();
+        rightPanel.add(billDetailsPanel, BorderLayout.NORTH);
+
+        // Bill items panel
+        JPanel itemsPanel = createBillItemsPanel();
+        rightPanel.add(itemsPanel, BorderLayout.CENTER);
+
+        // Add item panel (initially hidden)
+        addItemPanel = createAddItemPanel();
+        addItemPanel.setVisible(false);
+        rightPanel.add(addItemPanel, BorderLayout.SOUTH);
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, billsScrollPane, rightPanel);
+        splitPane.setDividerLocation(600);
+        splitPane.setResizeWeight(0.6);
+
+        return splitPane;
+    }
+
+    private JPanel createBillDetailsPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Bill Details"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
-        // Appointment
+        // Row 0
         gbc.gridx = 0;
         gbc.gridy = 0;
-        formPanel.add(new JLabel("Appointment:"), gbc);
+        panel.add(new JLabel("Bill ID:"), gbc);
         gbc.gridx = 1;
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(appointmentComboBox, gbc);
+        panel.add(billIdLabel, gbc);
 
-        // Insurance details
+        // Row 1
         gbc.gridx = 0;
         gbc.gridy = 1;
-        gbc.gridwidth = 1;
-        gbc.fill = GridBagConstraints.NONE;
-        formPanel.add(new JLabel("Insurance Details:"), gbc);
+        panel.add(new JLabel("Patient:"), gbc);
         gbc.gridx = 1;
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(insuranceField, gbc);
+        panel.add(patientNameLabel, gbc);
 
-        // Claim status
+        // Row 2
         gbc.gridx = 0;
         gbc.gridy = 2;
-        gbc.gridwidth = 1;
-        gbc.fill = GridBagConstraints.NONE;
-        formPanel.add(new JLabel("Claim Status:"), gbc);
+        panel.add(new JLabel("Appointment:"), gbc);
         gbc.gridx = 1;
-        formPanel.add(claimStatusComboBox, gbc);
+        panel.add(appointmentDateLabel, gbc);
 
-        // Total amount
+        // Row 3
         gbc.gridx = 0;
         gbc.gridy = 3;
-        formPanel.add(new JLabel("Total Amount:"), gbc);
+        panel.add(new JLabel("Total Amount:"), gbc);
         gbc.gridx = 1;
-        formPanel.add(totalAmountField, gbc);
+        totalAmountLabel.setFont(totalAmountLabel.getFont().deriveFont(Font.BOLD, 14f));
+        panel.add(totalAmountLabel, gbc);
 
-        gbc.gridx = 2;
-        formPanel.add(calculateTotalButton, gbc);
-
-        // Buttons
+        // Row 4
         gbc.gridx = 0;
         gbc.gridy = 4;
-        gbc.gridwidth = 3;
-        gbc.anchor = GridBagConstraints.CENTER;
+        panel.add(new JLabel("Claim Status:"), gbc);
+        gbc.gridx = 1;
+        panel.add(claimStatusCombo, gbc);
 
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        buttonPanel.add(createBillButton);
+        // Row 5
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        panel.add(new JLabel("Insurance:"), gbc);
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        panel.add(new JScrollPane(insuranceDetailsArea), gbc);
 
-        JButton clearBillForm = new JButton("Clear");
-        clearBillForm.addActionListener(e -> clearBillForm());
-        buttonPanel.add(clearBillForm);
-
-        formPanel.add(buttonPanel, gbc);
-
-        return formPanel;
+        return panel;
     }
 
     private JPanel createBillItemsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Bill Items"));
 
-        // Items table
-        JScrollPane itemsScroll = new JScrollPane(billItemTable);
-        itemsScroll.setPreferredSize(new Dimension(400, 200));
-        panel.add(itemsScroll, BorderLayout.CENTER);
+        JScrollPane itemsScrollPane = new JScrollPane(billItemsTable);
+        itemsScrollPane.setPreferredSize(new Dimension(400, 200));
+        panel.add(itemsScrollPane, BorderLayout.CENTER);
 
-        // Item form
-        JPanel itemFormPanel = new JPanel(new GridBagLayout());
-        itemFormPanel.setBorder(BorderFactory.createTitledBorder("Add Item"));
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.anchor = GridBagConstraints.WEST;
-
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        itemFormPanel.add(new JLabel("Type:"), gbc);
-        gbc.gridx = 1;
-        itemFormPanel.add(itemTypeComboBox, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        itemFormPanel.add(new JLabel("Description:"), gbc);
-        gbc.gridx = 1;
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        itemFormPanel.add(descriptionField, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.gridwidth = 1;
-        gbc.fill = GridBagConstraints.NONE;
-        itemFormPanel.add(new JLabel("Cost:"), gbc);
-        gbc.gridx = 1;
-        itemFormPanel.add(costField, gbc);
-
-        gbc.gridx = 2;
-        itemFormPanel.add(addItemButton, gbc);
-
-        panel.add(itemFormPanel, BorderLayout.SOUTH);
-
-        // Item management buttons
-        JPanel itemButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        itemButtons.add(removeItemButton);
-        itemButtons.add(applyDiscountButton);
-        panel.add(itemButtons, BorderLayout.NORTH);
+        JPanel itemButtonPanel = new JPanel(new FlowLayout());
+        itemButtonPanel.add(addItemButton);
+        itemButtonPanel.add(removeItemButton);
+        panel.add(itemButtonPanel, BorderLayout.SOUTH);
 
         return panel;
     }
 
-    private JPanel createClaimProcessingPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Insurance Claim Processing"));
-        panel.setPreferredSize(new Dimension(0, 150));
+    private JPanel createAddItemPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Add New Item"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
 
-        JScrollPane claimScroll = new JScrollPane(claimProcessingArea);
-        panel.add(claimScroll, BorderLayout.CENTER);
+        // Row 0
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(new JLabel("Type:"), gbc);
+        gbc.gridx = 1;
+        panel.add(itemTypeCombo, gbc);
 
-        JPanel claimButtons = new JPanel(new FlowLayout());
-        JButton processClaimBtn = new JButton("Process Selected Claim");
-        JButton clearLogBtn = new JButton("Clear Log");
-        JButton exportLogBtn = new JButton("Export Log");
+        // Row 1
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        panel.add(new JLabel("Description:"), gbc);
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(descriptionField, gbc);
 
-        processClaimBtn.addActionListener(e -> processInsuranceClaim());
-        clearLogBtn.addActionListener(e -> claimProcessingArea.setText(""));
-        exportLogBtn.addActionListener(e -> exportClaimLog());
+        // Row 2
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(new JLabel("Cost:"), gbc);
+        gbc.gridx = 1;
+        panel.add(costField, gbc);
 
-        claimButtons.add(processClaimBtn);
-        claimButtons.add(clearLogBtn);
-        claimButtons.add(exportLogBtn);
+        // Row 3 - Buttons
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(saveItemButton);
+        buttonPanel.add(cancelItemButton);
+        panel.add(buttonPanel, gbc);
 
-        panel.add(claimButtons, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private JPanel createBottomPanel() {
+        JPanel panel = new JPanel(new FlowLayout());
+        panel.add(viewBillButton);
+        panel.add(editBillButton);
+        panel.add(deleteBillButton);
+        panel.add(generateReportButton);
 
         return panel;
     }
 
     private void setupEventHandlers() {
-        // Table selections
-        billTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                boolean hasSelection = billTable.getSelectedRow() != -1;
-                processClaim.setEnabled(hasSelection);
+        // Search functionality
+        searchButton.addActionListener(e -> performSearch());
+        statusFilter.addActionListener(e -> performSearch());
 
-                if (hasSelection) {
-                    loadSelectedBillItems();
-                }
-            }
-        });
+        // Refresh button
+        refreshButton.addActionListener(e -> loadBills());
 
-        billItemTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                removeItemButton.setEnabled(billItemTable.getSelectedRow() != -1);
-            }
-        });
+        // Bill management buttons
+        viewBillButton.addActionListener(e -> viewBillDetails());
+        editBillButton.addActionListener(e -> editBill());
+        deleteBillButton.addActionListener(e -> deleteBill());
+        generateReportButton.addActionListener(e -> generateBillReport());
 
-        // Button listeners
-        createBillButton.addActionListener(e -> createNewBill());
-        addItemButton.addActionListener(e -> addBillItem());
-        removeItemButton.addActionListener(e -> removeBillItem());
-        calculateTotalButton.addActionListener(e -> calculateTotal());
-        applyDiscountButton.addActionListener(e -> applyDiscount());
-        refreshButton.addActionListener(e -> refreshData());
+        // Bill item management
+        addItemButton.addActionListener(e -> showAddItemPanel());
+        removeItemButton.addActionListener(e -> removeSelectedItem());
+        saveItemButton.addActionListener(e -> saveNewItem());
+        cancelItemButton.addActionListener(e -> hideAddItemPanel());
+
+        // Claim status change
+        claimStatusCombo.addActionListener(e -> updateClaimStatus());
     }
 
-    private void createNewBill() {
-        if (!validateBillForm()) {
+    private void loadBills() {
+        try {
+            List<Bill> bills = billDAO.getAllBills();
+            billsTableModel.setRowCount(0);
+
+            for (Bill bill : bills) {
+                // Get patient and appointment details
+                String patientName = "Unknown";
+                String appointmentDate = "N/A";
+
+                try {
+                    Appointment appointment = appointmentDAO.getAppointmentById(bill.getAppointmentId());
+                    if (appointment != null) {
+                        Patient patient = patientDAO.getPatientById(appointment.getPatientId());
+                        if (patient != null) {
+                            patientName = patient.getName();
+                        }
+                        appointmentDate = appointment.getAppointmentTime()
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                    }
+                } catch (SQLException e) {
+                    System.err.println("Error loading bill details: " + e.getMessage());
+                }
+
+                Object[] row = {
+                    bill.getId(),
+                    patientName,
+                    appointmentDate,
+                    currencyFormat.format(bill.getTotalAmount()),
+                    bill.getClaimStatus(),
+                    bill.getInsuranceDetails()
+                };
+                billsTableModel.addRow(row);
+            }
+
+            // Adjust column widths
+            adjustColumnWidths();
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Error loading bills: " + e.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void adjustColumnWidths() {
+        TableColumnModel columnModel = billsTable.getColumnModel();
+        int[] widths = {50, 150, 120, 100, 80, 150};
+
+        for (int i = 0; i < Math.min(widths.length, columnModel.getColumnCount()); i++) {
+            columnModel.getColumn(i).setPreferredWidth(widths[i]);
+        }
+    }
+
+    private void performSearch() {
+        String searchText = searchField.getText().toLowerCase().trim();
+        String statusFilter = (String) this.statusFilter.getSelectedItem();
+
+        try {
+            List<Bill> allBills = billDAO.getAllBills();
+            billsTableModel.setRowCount(0);
+
+            for (Bill bill : allBills) {
+                // Filter by status
+                if (!"All".equals(statusFilter) && !statusFilter.equals(bill.getClaimStatus())) {
+                    continue;
+                }
+
+                // Get patient details for search
+                String patientName = "Unknown";
+                String appointmentDate = "N/A";
+
+                try {
+                    Appointment appointment = appointmentDAO.getAppointmentById(bill.getAppointmentId());
+                    if (appointment != null) {
+                        Patient patient = patientDAO.getPatientById(appointment.getPatientId());
+                        if (patient != null) {
+                            patientName = patient.getName();
+                        }
+                        appointmentDate = appointment.getAppointmentTime()
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                    }
+                } catch (SQLException e) {
+                    System.err.println("Error loading search details: " + e.getMessage());
+                }
+
+                // Search filter
+                if (!searchText.isEmpty()) {
+                    boolean matches = patientName.toLowerCase().contains(searchText)
+                            || bill.getId().toString().contains(searchText)
+                            || (bill.getInsuranceDetails() != null
+                            && bill.getInsuranceDetails().toLowerCase().contains(searchText));
+
+                    if (!matches) {
+                        continue;
+                    }
+                }
+
+                Object[] row = {
+                    bill.getId(),
+                    patientName,
+                    appointmentDate,
+                    currencyFormat.format(bill.getTotalAmount()),
+                    bill.getClaimStatus(),
+                    bill.getInsuranceDetails()
+                };
+                billsTableModel.addRow(row);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Error performing search: " + e.getMessage(),
+                    "Search Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void loadSelectedBillDetails() {
+        int selectedRow = billsTable.getSelectedRow();
+        if (selectedRow == -1) {
+            clearBillDetails();
+            updateButtonStates(false);
+            return;
+        }
+
+        Long billId = (Long) billsTable.getValueAt(selectedRow, 0);
+
+        try {
+            currentBill = billDAO.getBillById(billId);
+            if (currentBill != null) {
+                displayBillDetails(currentBill);
+                loadBillItems(currentBill.getId());
+                updateButtonStates(true);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Error loading bill details: " + e.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void displayBillDetails(Bill bill) {
+        billIdLabel.setText(bill.getId().toString());
+        totalAmountLabel.setText(currencyFormat.format(bill.getTotalAmount()));
+        claimStatusCombo.setSelectedItem(bill.getClaimStatus());
+        insuranceDetailsArea.setText(bill.getInsuranceDetails() != null ? bill.getInsuranceDetails() : "");
+
+        // Load patient and appointment info
+        try {
+            Appointment appointment = appointmentDAO.getAppointmentById(bill.getAppointmentId());
+            if (appointment != null) {
+                appointmentDateLabel.setText(appointment.getAppointmentTime()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+
+                Patient patient = patientDAO.getPatientById(appointment.getPatientId());
+                if (patient != null) {
+                    patientNameLabel.setText(patient.getName());
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error loading bill details: " + e.getMessage());
+        }
+    }
+
+    private void loadBillItems(Long billId) {
+        try {
+            List<BillItem> items = billDAO.getBillItemsByBillId(billId);
+            billItemsTableModel.setRowCount(0);
+
+            for (BillItem item : items) {
+                Object[] row = {
+                    item.getItemType(),
+                    item.getDescription(),
+                    currencyFormat.format(item.getCost())
+                };
+                billItemsTableModel.addRow(row);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Error loading bill items: " + e.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void clearBillDetails() {
+        billIdLabel.setText("N/A");
+        patientNameLabel.setText("N/A");
+        appointmentDateLabel.setText("N/A");
+        totalAmountLabel.setText("$0.00");
+        claimStatusCombo.setSelectedIndex(0);
+        insuranceDetailsArea.setText("");
+        billItemsTableModel.setRowCount(0);
+        currentBill = null;
+    }
+
+    private void updateButtonStates(boolean hasBillSelected) {
+        viewBillButton.setEnabled(hasBillSelected);
+        editBillButton.setEnabled(hasBillSelected);
+        deleteBillButton.setEnabled(hasBillSelected);
+        generateReportButton.setEnabled(hasBillSelected);
+        addItemButton.setEnabled(hasBillSelected);
+        removeItemButton.setEnabled(hasBillSelected && billItemsTable.getSelectedRow() != -1);
+        claimStatusCombo.setEnabled(hasBillSelected);
+        insuranceDetailsArea.setEnabled(hasBillSelected);
+    }
+
+    private void viewBillDetails() {
+        if (currentBill == null) {
+            return;
+        }
+
+        JDialog detailDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                "Bill Details - ID: " + currentBill.getId(), true);
+        detailDialog.setLayout(new BorderLayout());
+        detailDialog.setSize(500, 400);
+        detailDialog.setLocationRelativeTo(this);
+
+        // Create detailed view
+        JTextArea detailArea = new JTextArea();
+        detailArea.setEditable(false);
+        detailArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+
+        StringBuilder details = new StringBuilder();
+        details.append("GLOBEMED HEALTHCARE SYSTEM\n");
+        details.append("============================\n\n");
+        details.append("BILL DETAILS\n");
+        details.append("Bill ID: ").append(currentBill.getId()).append("\n");
+        details.append("Patient: ").append(patientNameLabel.getText()).append("\n");
+        details.append("Appointment: ").append(appointmentDateLabel.getText()).append("\n");
+        details.append("Claim Status: ").append(currentBill.getClaimStatus()).append("\n");
+        details.append("Insurance: ").append(currentBill.getInsuranceDetails() != null
+                ? currentBill.getInsuranceDetails() : "None").append("\n\n");
+
+        details.append("ITEMIZED CHARGES\n");
+        details.append("================\n");
+
+        BigDecimal totalCost = BigDecimal.ZERO;
+        for (BillItem item : currentBill.getBillItems()) {
+            details.append(String.format("%-15s %-25s %10s\n",
+                    item.getItemType(),
+                    item.getDescription(),
+                    currencyFormat.format(item.getCost())));
+            totalCost = totalCost.add(item.getCost());
+        }
+
+        details.append("                                        ----------\n");
+        details.append(String.format("%-40s %10s\n", "TOTAL AMOUNT:", currencyFormat.format(totalCost)));
+
+        detailArea.setText(details.toString());
+
+        JScrollPane scrollPane = new JScrollPane(detailArea);
+        detailDialog.add(scrollPane, BorderLayout.CENTER);
+
+        JButton closeButton = new JButton("Close");
+        closeButton.addActionListener(e -> detailDialog.dispose());
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(closeButton);
+        detailDialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        detailDialog.setVisible(true);
+    }
+
+    private void editBill() {
+        if (currentBill == null) {
+            return;
+        }
+
+        int result = JOptionPane.showConfirmDialog(this,
+                "Do you want to update this bill's insurance details and claim status?",
+                "Edit Bill", JOptionPane.YES_NO_OPTION);
+
+        if (result == JOptionPane.YES_OPTION) {
+            try {
+                currentBill.setClaimStatus((String) claimStatusCombo.getSelectedItem());
+                currentBill.setInsuranceDetails(insuranceDetailsArea.getText());
+
+                if (billDAO.updateBill(currentBill)) {
+                    JOptionPane.showMessageDialog(this, "Bill updated successfully!");
+                    loadBills(); // Refresh the table
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to update bill.",
+                            "Update Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this,
+                        "Error updating bill: " + e.getMessage(),
+                        "Database Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void deleteBill() {
+        if (currentBill == null) {
+            return;
+        }
+
+        int result = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to delete this bill?\nThis action cannot be undone.",
+                "Delete Bill", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+        if (result == JOptionPane.YES_OPTION) {
+            try {
+                // Note: In a real system, you might want to archive instead of delete
+                JOptionPane.showMessageDialog(this,
+                        "Bill deletion is restricted for audit purposes.\nPlease mark as 'REJECTED' instead.",
+                        "Delete Restricted", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this,
+                        "Error deleting bill: " + e.getMessage(),
+                        "Delete Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void generateBillReport() {
+        if (currentBill == null) {
+            return;
+        }
+
+        // Create a simple report dialog
+        JDialog reportDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                "Bill Report", true);
+        reportDialog.setSize(600, 500);
+        reportDialog.setLocationRelativeTo(this);
+        reportDialog.setLayout(new BorderLayout());
+
+        JTextArea reportArea = new JTextArea();
+        reportArea.setEditable(false);
+        reportArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+
+        StringBuilder report = new StringBuilder();
+        report.append("GLOBEMED HEALTHCARE SYSTEM\n");
+        report.append("BILLING REPORT\n");
+        report.append("Generated: ").append(java.time.LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n");
+        report.append("=".repeat(50)).append("\n\n");
+
+        report.append("BILL INFORMATION\n");
+        report.append("Bill ID: ").append(currentBill.getId()).append("\n");
+        report.append("Patient: ").append(patientNameLabel.getText()).append("\n");
+        report.append("Appointment Date: ").append(appointmentDateLabel.getText()).append("\n");
+        report.append("Claim Status: ").append(currentBill.getClaimStatus()).append("\n");
+        report.append("Insurance Details: ").append(currentBill.getInsuranceDetails() != null
+                ? currentBill.getInsuranceDetails() : "None").append("\n\n");
+
+        report.append("DETAILED CHARGES\n");
+        report.append(String.format("%-15s %-30s %10s\n", "TYPE", "DESCRIPTION", "AMOUNT"));
+        report.append("-".repeat(50)).append("\n");
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (BillItem item : currentBill.getBillItems()) {
+            report.append(String.format("%-15s %-30s %10s\n",
+                    item.getItemType(),
+                    item.getDescription(),
+                    currencyFormat.format(item.getCost())));
+            total = total.add(item.getCost());
+        }
+
+        report.append("-".repeat(50)).append("\n");
+        report.append(String.format("%-45s %10s\n", "TOTAL AMOUNT:", currencyFormat.format(total)));
+        report.append("\n\nThis is an official billing statement from GlobeMed Healthcare System.");
+
+        reportArea.setText(report.toString());
+
+        JScrollPane scrollPane = new JScrollPane(reportArea);
+        reportDialog.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        JButton printButton = new JButton("Print");
+        JButton closeButton = new JButton("Close");
+
+        printButton.addActionListener(e -> {
+            // In a real system, implement actual printing
+            JOptionPane.showMessageDialog(reportDialog, "Print functionality would be implemented here.");
+        });
+        closeButton.addActionListener(e -> reportDialog.dispose());
+
+        buttonPanel.add(printButton);
+        buttonPanel.add(closeButton);
+        reportDialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        reportDialog.setVisible(true);
+    }
+
+    private void showAddItemPanel() {
+        addItemPanel.setVisible(true);
+        descriptionField.setText("");
+        costField.setText("");
+        itemTypeCombo.setSelectedIndex(0);
+        revalidate();
+        repaint();
+    }
+
+    private void hideAddItemPanel() {
+        addItemPanel.setVisible(false);
+        revalidate();
+        repaint();
+    }
+
+    private void saveNewItem() {
+        if (currentBill == null) {
+            return;
+        }
+
+        String description = descriptionField.getText().trim();
+        String costText = costField.getText().trim();
+
+        if (description.isEmpty() || costText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill in all fields.",
+                    "Validation Error", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         try {
-            Long appointmentId = extractIdFromComboBox(appointmentComboBox);
-            if (appointmentId == null) {
-                JOptionPane.showMessageDialog(this, "Please select an appointment!",
-                        "Validation Error", JOptionPane.ERROR_MESSAGE);
+            BigDecimal cost = new BigDecimal(costText);
+            if (cost.compareTo(BigDecimal.ZERO) < 0) {
+                JOptionPane.showMessageDialog(this, "Cost cannot be negative.",
+                        "Validation Error", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            Bill bill = new Bill();
-            bill.setAppointmentId(appointmentId);
-            bill.setInsuranceDetails(insuranceField.getText().trim());
-            bill.setClaimStatus("PENDING");
-            bill.setTotalAmount(BigDecimal.ZERO);
+            BillItem newItem = new BillItem();
+            newItem.setItemType((String) itemTypeCombo.getSelectedItem());
+            newItem.setDescription(description);
+            newItem.setCost(cost);
 
-            SwingWorker<Long, Void> worker = new SwingWorker<Long, Void>() {
-                @Override
-                protected Long doInBackground() throws Exception {
-                    return billDAO.insertBill(bill);
+            Long itemId = billDAO.insertBillItem(currentBill.getId(), newItem);
+            if (itemId != null) {
+                // Reload the current bill to get updated total
+                currentBill = billDAO.getBillById(currentBill.getId());
+                displayBillDetails(currentBill);
+                loadBillItems(currentBill.getId());
+                hideAddItemPanel();
+
+                // Update the main table
+                int selectedRow = billsTable.getSelectedRow();
+                if (selectedRow != -1) {
+                    billsTableModel.setValueAt(currencyFormat.format(currentBill.getTotalAmount()),
+                            selectedRow, 3);
                 }
 
-                @Override
-                protected void done() {
-                    try {
-                        Long billId = get();
-                        if (billId != null) {
-                            currentBillId = billId;
-                            currentBillComposite = new BillComposite(
-                        
-                    
-                
-            
-        
-    
-"Bill
+                JOptionPane.showMessageDialog(this, "Bill item added successfully!");
+            }
+
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid cost amount.",
+                    "Validation Error", JOptionPane.WARNING_MESSAGE);
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Error saving bill item: " + e.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void removeSelectedItem() {
+        int selectedRow = billItemsTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Please select an item to remove.",
+                    "Selection Required", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int result = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to remove this item?",
+                "Remove Item", JOptionPane.YES_NO_OPTION);
+
+        if (result == JOptionPane.YES_OPTION) {
+            // In a real system, you'd implement removeItem in BillDAO
+            JOptionPane.showMessageDialog(this, "Item removal functionality would be implemented here.");
+            // For now, just refresh the view
+            loadBillItems(currentBill.getId());
+        }
+    }
+
+    private void updateClaimStatus() {
+        if (currentBill == null) {
+            return;
+        }
+
+        String newStatus = (String) claimStatusCombo.getSelectedItem();
+        if (!newStatus.equals(currentBill.getClaimStatus())) {
+            try {
+                currentBill.setClaimStatus(newStatus);
+                if (billDAO.updateBill(currentBill)) {
+                    // Update the main table
+                    int selectedRow = billsTable.getSelectedRow();
+                    if (selectedRow != -1) {
+                        billsTableModel.setValueAt(newStatus, selectedRow, 4);
+                    }
+
+                    System.out.println("Claim status updated to: " + newStatus);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to update claim status.",
+                            "Update Error", JOptionPane.ERROR_MESSAGE);
+                    // Revert the combo box
+                    claimStatusCombo.setSelectedItem(currentBill.getClaimStatus());
+                }
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this,
+                        "Error updating claim status: " + e.getMessage(),
+                        "Database Error", JOptionPane.ERROR_MESSAGE);
+                // Revert the combo box
+                claimStatusCombo.setSelectedItem(currentBill.getClaimStatus());
+            }
+        }
+    }
+
+    // Public methods for external access
+    public void refreshData() {
+        loadBills();
+    }
+
+    public void selectBillById(Long billId) {
+        for (int i = 0; i < billsTable.getRowCount(); i++) {
+            if (billsTable.getValueAt(i, 0).equals(billId)) {
+                billsTable.setRowSelectionInterval(i, i);
+                billsTable.scrollRectToVisible(billsTable.getCellRect(i, 0, true));
+                break;
+            }
+        }
+    }
+
+    public Bill getCurrentBill() {
+        return currentBill;
+    }
+
+    public boolean hasBillSelected() {
+        return billsTable.getSelectedRow() != -1;
+    }
+}

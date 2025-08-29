@@ -34,7 +34,7 @@ public class MainFrame extends JFrame {
     private LoginPanel loginPanel;
     private PatientManagementPanel patientPanel;
     private AppointmentPanel appointmentPanel;
-//    private BillingPanel billingPanel;
+    private BillingPanel billingPanel;
 //    private StaffManagementPanel staffPanel;
 //    private ReportsPanel reportsPanel;
     private DashboardPanel dashboardPanel;
@@ -76,7 +76,7 @@ public class MainFrame extends JFrame {
         dashboardPanel = new DashboardPanel(this);
         patientPanel = new PatientManagementPanel(this);
         appointmentPanel = new AppointmentPanel(this);
-//        billingPanel = new BillingPanel(this);
+        billingPanel = new BillingPanel(this);
 //        staffPanel = new StaffManagementPanel(this);
 //        reportsPanel = new ReportsPanel(this);
 
@@ -88,7 +88,7 @@ public class MainFrame extends JFrame {
         mainPanel.add(dashboardPanel, DASHBOARD_CARD);
         mainPanel.add(patientPanel, PATIENTS_CARD);
         mainPanel.add(appointmentPanel, APPOINTMENTS_CARD);
-//        mainPanel.add(billingPanel, BILLING_CARD);
+        mainPanel.add(billingPanel, BILLING_CARD);
 //        mainPanel.add(staffPanel, STAFF_CARD);
 //        mainPanel.add(reportsPanel, REPORTS_CARD);
 
