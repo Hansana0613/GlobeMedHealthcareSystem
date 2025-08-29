@@ -24,8 +24,11 @@ public class BillDAO {
 
             while (rs.next()) {
                 Bill bill = mapResultSetToBill(rs);
-                bill.setBillItems(getBillItemsByBillId(bill.getId()));
+                //bill.setBillItems(getBillItemsByBillId(bill.getId()));
                 bills.add(bill);
+            }
+            for (Bill bill : bills) {
+                bill.setBillItems(getBillItemsByBillId(bill.getId()));
             }
         }
 
