@@ -86,4 +86,21 @@ public class Appointment {
                 + ", staffId=" + staffId + ", appointmentTime=" + appointmentTime
                 + ", location='" + location + "', status='" + status + "'}";
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        Appointment appointment = (Appointment) obj;
+        return id != null && id.equals(appointment.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
 }

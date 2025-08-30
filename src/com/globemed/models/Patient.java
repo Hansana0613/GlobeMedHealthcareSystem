@@ -84,4 +84,21 @@ public class Patient {
     public String toString() {
         return "Patient{id=" + id + ", name='" + name + "', dob=" + dob + "}";
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        Patient patient = (Patient) obj;
+        return id != null && id.equals(patient.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
 }

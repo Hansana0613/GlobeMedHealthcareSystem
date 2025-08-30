@@ -48,7 +48,8 @@ public class DashboardPanel extends JPanel {
         initializeComponents();
         layoutComponents();
         setupEventHandlers();
-        refreshData();
+        // Defer data refresh to avoid calling setStatus before MainFrame is ready
+        SwingUtilities.invokeLater(() -> refreshData());
     }
 
     private void initializeComponents() {

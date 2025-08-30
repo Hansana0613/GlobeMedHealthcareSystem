@@ -105,4 +105,21 @@ public class Bill {
         return "Bill{id=" + id + ", appointmentId=" + appointmentId
                 + ", totalAmount=" + totalAmount + ", claimStatus='" + claimStatus + "'}";
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        Bill bill = (Bill) obj;
+        return id != null && id.equals(bill.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
 }

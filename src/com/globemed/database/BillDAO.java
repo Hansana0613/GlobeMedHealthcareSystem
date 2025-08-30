@@ -7,6 +7,7 @@ package com.globemed.database;
 import com.globemed.models.Bill;
 import com.globemed.models.BillItem;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,20 +38,24 @@ public class BillDAO {
 
     public Bill getBillById(Long id) throws SQLException {
         String sql = "SELECT * FROM bills WHERE id = ?";
+        Bill bill = null;
 
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    Bill bill = mapResultSetToBill(rs);
-                    bill.setBillItems(getBillItemsByBillId(bill.getId()));
-                    return bill;
+                    bill = mapResultSetToBill(rs);
                 }
             }
         }
 
-        return null;
+        // Now fetch bill items after the ResultSet is closed
+        if (bill != null) {
+            bill.setBillItems(getBillItemsByBillId(bill.getId()));
+        }
+
+        return bill;
     }
 
     public List<Bill> getBillsByPatientId(Long patientId) throws SQLException {
@@ -63,10 +68,14 @@ public class BillDAO {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     Bill bill = mapResultSetToBill(rs);
-                    bill.setBillItems(getBillItemsByBillId(bill.getId()));
                     bills.add(bill);
                 }
             }
+        }
+
+        // Now fetch bill items for all bills after the ResultSet is closed
+        for (Bill bill : bills) {
+            bill.setBillItems(getBillItemsByBillId(bill.getId()));
         }
 
         return bills;
@@ -163,6 +172,34 @@ public class BillDAO {
                 }
             }
         }
+    }
+
+    public List<Bill> getBillsByPatientIdAndDateRange(Long patientId, LocalDate startDate, LocalDate endDate) throws SQLException {
+        List<Bill> bills = new ArrayList<>();
+        String sql = "SELECT b.* FROM bills b "
+                + "JOIN appointments a ON b.appointment_id = a.id "
+                + "WHERE a.patient_id = ? AND DATE(a.appointment_time) BETWEEN ? AND ?";
+
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, patientId);
+            stmt.setDate(2, Date.valueOf(startDate));
+            stmt.setDate(3, Date.valueOf(endDate));
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Bill bill = mapResultSetToBill(rs);
+                    bills.add(bill);
+                }
+            }
+        }
+
+        // Now fetch bill items for all bills after the ResultSet is closed
+        for (Bill bill : bills) {
+            bill.setBillItems(getBillItemsByBillId(bill.getId()));
+        }
+
+        return bills;
     }
 
     private Bill mapResultSetToBill(ResultSet rs) throws SQLException {

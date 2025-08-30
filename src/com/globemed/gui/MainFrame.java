@@ -35,8 +35,8 @@ public class MainFrame extends JFrame {
     private PatientManagementPanel patientPanel;
     private AppointmentPanel appointmentPanel;
     private BillingPanel billingPanel;
-//    private StaffManagementPanel staffPanel;
-//    private ReportsPanel reportsPanel;
+    private StaffManagementPanel staffPanel;
+    private ReportsPanel reportsPanel;
     private DashboardPanel dashboardPanel;
 
     // Cards
@@ -53,7 +53,8 @@ public class MainFrame extends JFrame {
         initializeComponents();
         layoutComponents();
         setupEventHandlers();
-        showLoginInterface();
+        // Defer showing login interface to ensure all components are initialized
+        SwingUtilities.invokeLater(() -> showLoginInterface());
     }
 
     private void initializeServices() {
@@ -77,20 +78,22 @@ public class MainFrame extends JFrame {
         patientPanel = new PatientManagementPanel(this);
         appointmentPanel = new AppointmentPanel(this);
         billingPanel = new BillingPanel(this);
-//        staffPanel = new StaffManagementPanel(this);
-//        reportsPanel = new ReportsPanel(this);
+        staffPanel = new StaffManagementPanel(this);
+        reportsPanel = new ReportsPanel(getCurrentUser());
 
         // Add panels to card layout
         mainPanel.add(loginPanel, LOGIN_CARD);
 
         // Set default button
-        getRootPane().setDefaultButton(loginPanel.getLoginButton());
+        if (loginPanel != null) {
+            getRootPane().setDefaultButton(loginPanel.getLoginButton());
+        }
         mainPanel.add(dashboardPanel, DASHBOARD_CARD);
         mainPanel.add(patientPanel, PATIENTS_CARD);
         mainPanel.add(appointmentPanel, APPOINTMENTS_CARD);
         mainPanel.add(billingPanel, BILLING_CARD);
-//        mainPanel.add(staffPanel, STAFF_CARD);
-//        mainPanel.add(reportsPanel, REPORTS_CARD);
+        mainPanel.add(staffPanel, STAFF_CARD);
+        mainPanel.add(reportsPanel, REPORTS_CARD);
 
         // Initialize menu bar (hidden initially)
         createMenuBar();
@@ -168,13 +171,17 @@ public class MainFrame extends JFrame {
         helpMenu.add(aboutItem);
 
         // Add menus to menu bar
-        menuBar.add(fileMenu);
-        menuBar.add(modulesMenu);
-        menuBar.add(toolsMenu);
-        menuBar.add(Box.createHorizontalGlue());
-        menuBar.add(helpMenu);
+        if (menuBar != null) {
+            menuBar.add(fileMenu);
+            menuBar.add(modulesMenu);
+            menuBar.add(toolsMenu);
+            menuBar.add(Box.createHorizontalGlue());
+            menuBar.add(helpMenu);
+        }
 
-        setJMenuBar(menuBar);
+        if (menuBar != null) {
+            setJMenuBar(menuBar);
+        }
     }
 
     private void createToolBar() {
@@ -205,22 +212,24 @@ public class MainFrame extends JFrame {
         JButton reportsBtn = createToolBarButton("Reports", "reports.png",
                 e -> showCard(REPORTS_CARD));
 
-        toolBar.add(dashboardBtn);
-        toolBar.addSeparator();
-        toolBar.add(patientsBtn);
-        toolBar.add(appointmentsBtn);
-        toolBar.add(billingBtn);
-        toolBar.addSeparator();
-        toolBar.add(staffBtn);
-        toolBar.add(reportsBtn);
+        if (toolBar != null) {
+            toolBar.add(dashboardBtn);
+            toolBar.addSeparator();
+            toolBar.add(patientsBtn);
+            toolBar.add(appointmentsBtn);
+            toolBar.add(billingBtn);
+            toolBar.addSeparator();
+            toolBar.add(staffBtn);
+            toolBar.add(reportsBtn);
 
-        // Add spacer and logout button
-        toolBar.add(Box.createHorizontalGlue());
+            // Add spacer and logout button
+            toolBar.add(Box.createHorizontalGlue());
 
-        JButton logoutBtn = createToolBarButton("Logout", "logout.png",
-                e -> logout());
-        logoutBtn.setForeground(Color.RED);
-        toolBar.add(logoutBtn);
+            JButton logoutBtn = createToolBarButton("Logout", "logout.png",
+                    e -> logout());
+            logoutBtn.setForeground(Color.RED);
+            toolBar.add(logoutBtn);
+        }
     }
 
     private JButton createToolBarButton(String text, String iconName, ActionListener action) {
@@ -242,19 +251,27 @@ public class MainFrame extends JFrame {
         userLabel.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
         userLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        statusPanel.add(statusLabel, BorderLayout.WEST);
-        statusPanel.add(userLabel, BorderLayout.EAST);
+        if (statusLabel != null && userLabel != null) {
+            statusPanel.add(statusLabel, BorderLayout.WEST);
+            statusPanel.add(userLabel, BorderLayout.EAST);
+        }
 
         add(statusPanel, BorderLayout.SOUTH);
     }
 
     private void layoutComponents() {
         setLayout(new BorderLayout());
-        add(mainPanel, BorderLayout.CENTER);
+        if (mainPanel != null) {
+            add(mainPanel, BorderLayout.CENTER);
+        }
 
         // Initially hide menu bar and toolbar
-        menuBar.setVisible(false);
-        toolBar.setVisible(false);
+        if (menuBar != null) {
+            menuBar.setVisible(false);
+        }
+        if (toolBar != null) {
+            toolBar.setVisible(false);
+        }
     }
 
     private void setupEventHandlers() {
@@ -267,21 +284,33 @@ public class MainFrame extends JFrame {
     }
 
     public void showLoginInterface() {
-        menuBar.setVisible(false);
-        if (toolBar.getParent() != null) {
+        if (menuBar != null) {
+            menuBar.setVisible(false);
+        }
+        if (toolBar != null && toolBar.getParent() != null) {
             remove(toolBar);
         }
-        statusLabel.setText("Please log in to continue");
-        userLabel.setText("");
+        if (statusLabel != null) {
+            statusLabel.setText("Please log in to continue");
+        }
+        if (userLabel != null) {
+            userLabel.setText("");
+        }
         cardLayout.show(mainPanel, LOGIN_CARD);
-        loginPanel.reset();
+        if (loginPanel != null) {
+            loginPanel.reset();
+        }
         revalidate();
         repaint();
     }
 
     public void showMainInterface() {
-        menuBar.setVisible(true);
-        add(toolBar, BorderLayout.NORTH);
+        if (menuBar != null) {
+            menuBar.setVisible(true);
+        }
+        if (toolBar != null) {
+            add(toolBar, BorderLayout.NORTH);
+        }
         updateUserInfo();
         showCard(DASHBOARD_CARD);
         revalidate();
@@ -289,7 +318,9 @@ public class MainFrame extends JFrame {
     }
 
     private void showCard(String cardName) {
-        cardLayout.show(mainPanel, cardName);
+        if (cardLayout != null && mainPanel != null) {
+            cardLayout.show(mainPanel, cardName);
+        }
         updateStatusBasedOnCard(cardName);
 
         // Refresh panel data if needed
@@ -304,18 +335,26 @@ public class MainFrame extends JFrame {
 //                billingPanel.refreshData();
                 break;
             case STAFF_CARD:
-//                staffPanel.refreshData();
+                if (staffPanel != null) {
+                    staffPanel.refreshData();
+                }
                 break;
             case REPORTS_CARD:
 //                reportsPanel.refreshData();
                 break;
             case DASHBOARD_CARD:
-                dashboardPanel.refreshData();
+                if (dashboardPanel != null) {
+                    dashboardPanel.refreshData();
+                }
                 break;
         }
     }
 
     private void updateStatusBasedOnCard(String cardName) {
+        if (statusLabel == null) {
+            return;
+        }
+        
         switch (cardName) {
             case DASHBOARD_CARD:
                 statusLabel.setText("Dashboard - System Overview");
@@ -339,7 +378,7 @@ public class MainFrame extends JFrame {
     }
 
     private void updateUserInfo() {
-        if (currentUser != null) {
+        if (currentUser != null && userLabel != null && statusLabel != null) {
             userLabel.setText("Logged in as: " + currentUser.getName() + " | Role ID: " + currentUser.getRoleId());
             statusLabel.setText("Welcome to GlobeMed Healthcare System");
         }
@@ -430,6 +469,11 @@ public class MainFrame extends JFrame {
 
     public void setCurrentUser(Staff currentUser) {
         this.currentUser = currentUser;
+        
+        // Update ReportsPanel with new user information
+        if (reportsPanel != null) {
+            reportsPanel.updateUser(currentUser);
+        }
     }
 
     public RoleManagementService getRoleService() {
@@ -437,6 +481,8 @@ public class MainFrame extends JFrame {
     }
 
     public void setStatus(String status) {
-        statusLabel.setText(status);
+        if (statusLabel != null) {
+            statusLabel.setText(status);
+        }
     }
 }

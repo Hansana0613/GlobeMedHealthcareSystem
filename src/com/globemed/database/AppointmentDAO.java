@@ -160,6 +160,24 @@ public class AppointmentDAO {
         }
     }
 
+    // Add this method to existing AppointmentDAO class
+    public List<Appointment> getAppointmentsByPatientId(Long patientId) throws SQLException {
+        List<Appointment> appointments = new ArrayList<>();
+        String sql = "SELECT * FROM appointments WHERE patient_id = ? ORDER BY appointment_time DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, patientId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    appointments.add(mapResultSetToAppointment(rs));
+                }
+            }
+        }
+
+        return appointments;
+    }
+
     private Appointment mapResultSetToAppointment(ResultSet rs) throws SQLException {
         Appointment appointment = new Appointment();
         appointment.setId(rs.getLong("id"));
