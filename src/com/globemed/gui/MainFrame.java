@@ -35,7 +35,6 @@ public class MainFrame extends JFrame {
     private PatientManagementPanel patientPanel;
     private AppointmentPanel appointmentPanel;
     private BillingPanel billingPanel;
-    private StaffManagementPanel staffPanel;
     private ReportsPanel reportsPanel;
     private DashboardPanel dashboardPanel;
 
@@ -78,7 +77,6 @@ public class MainFrame extends JFrame {
         patientPanel = new PatientManagementPanel(this);
         appointmentPanel = new AppointmentPanel(this);
         billingPanel = new BillingPanel(this);
-        staffPanel = new StaffManagementPanel(this);
         reportsPanel = new ReportsPanel(getCurrentUser());
 
         // Add panels to card layout
@@ -92,7 +90,6 @@ public class MainFrame extends JFrame {
         mainPanel.add(patientPanel, PATIENTS_CARD);
         mainPanel.add(appointmentPanel, APPOINTMENTS_CARD);
         mainPanel.add(billingPanel, BILLING_CARD);
-        mainPanel.add(staffPanel, STAFF_CARD);
         mainPanel.add(reportsPanel, REPORTS_CARD);
 
         // Initialize menu bar (hidden initially)
@@ -334,11 +331,6 @@ public class MainFrame extends JFrame {
             case BILLING_CARD:
 //                billingPanel.refreshData();
                 break;
-            case STAFF_CARD:
-                if (staffPanel != null) {
-                    staffPanel.refreshData();
-                }
-                break;
             case REPORTS_CARD:
 //                reportsPanel.refreshData();
                 break;
@@ -354,7 +346,7 @@ public class MainFrame extends JFrame {
         if (statusLabel == null) {
             return;
         }
-        
+
         switch (cardName) {
             case DASHBOARD_CARD:
                 statusLabel.setText("Dashboard - System Overview");
@@ -469,7 +461,7 @@ public class MainFrame extends JFrame {
 
     public void setCurrentUser(Staff currentUser) {
         this.currentUser = currentUser;
-        
+
         // Update ReportsPanel with new user information
         if (reportsPanel != null) {
             reportsPanel.updateUser(currentUser);

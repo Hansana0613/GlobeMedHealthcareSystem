@@ -48,4 +48,40 @@ public class DatabaseConnection {
             }
         }
     }
+    
+    /**
+     * Begin a transaction
+     */
+    public static void beginTransaction() throws SQLException {
+        Connection conn = getConnection();
+        if (conn != null) {
+            conn.setAutoCommit(false);
+        }
+    }
+    
+    /**
+     * Commit the current transaction
+     */
+    public static void commitTransaction() throws SQLException {
+        Connection conn = getConnection();
+        if (conn != null) {
+            conn.commit();
+            conn.setAutoCommit(true);
+        }
+    }
+    
+    /**
+     * Rollback the current transaction
+     */
+    public static void rollbackTransaction() {
+        try {
+            Connection conn = getConnection();
+            if (conn != null) {
+                conn.rollback();
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error rolling back transaction: " + e.getMessage());
+        }
+    }
 }

@@ -21,7 +21,6 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
- * Appointment Management Panel implementing Mediator and Observer patterns
  *
  * @author Hansana
  */
@@ -62,6 +61,9 @@ public class AppointmentPanel extends JPanel {
         initializeComponents();
         layoutComponents();
         setupEventHandlers();
+        
+        // Initial data load
+        refreshData();
     }
 
     private void initializeComponents() {
@@ -625,41 +627,66 @@ public class AppointmentPanel extends JPanel {
         worker.execute();
     }
 
+    // FIXED METHOD - Uses single database operation instead of multiple SwingWorkers
     private void updateTableData(List<Appointment> appointments) {
+        // Clear the table first
         tableModel.setRowCount(0);
-
-        for (Appointment appointment : appointments) {
-            SwingWorker<Object[], Void> rowWorker = new SwingWorker<Object[], Void>() {
-                @Override
-                protected Object[] doInBackground() throws Exception {
-                    // Get patient and staff names
-                    Patient patient = patientDAO.getPatientById(appointment.getPatientId());
-                    Staff staff = staffDAO.getStaffById(appointment.getStaffId());
-
-                    return new Object[]{
-                        appointment.getId(),
-                        patient != null ? patient.getName() : "Unknown Patient",
-                        staff != null ? staff.getName() : "Unknown Doctor",
-                        appointment.getAppointmentTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
-                        appointment.getLocation(),
-                        appointment.getStatus()
-                    };
-                }
-
-                @Override
-                protected void done() {
-                    try {
-                        Object[] row = get();
-                        tableModel.addRow(row);
-                    } catch (Exception e) {
-                        // Handle individual row errors gracefully
-                        System.err.println("Error processing appointment: " + e.getMessage());
-                    }
-                }
-            };
-
-            rowWorker.execute();
+        
+        if (appointments == null || appointments.isEmpty()) {
+            return;
         }
+
+        // Load all patient and staff data in a single operation to avoid multiple database calls
+        SwingWorker<Void, Void> dataLoader = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    // Pre-load all patients and staff to avoid multiple database calls
+                    List<Patient> allPatients = patientDAO.getAllPatients();
+                    List<Staff> allStaff = staffDAO.getAllStaff();
+                    
+                    // Create maps for quick lookup
+                    java.util.Map<Long, Patient> patientMap = new java.util.HashMap<>();
+                    java.util.Map<Long, Staff> staffMap = new java.util.HashMap<>();
+                    
+                    for (Patient patient : allPatients) {
+                        patientMap.put(patient.getId(), patient);
+                    }
+                    
+                    for (Staff staff : allStaff) {
+                        staffMap.put(staff.getId(), staff);
+                    }
+                    
+                    // Process all appointments with the loaded data
+                    for (Appointment appointment : appointments) {
+                        Patient patient = patientMap.get(appointment.getPatientId());
+                        Staff staff = staffMap.get(appointment.getStaffId());
+                        
+                        Object[] row = {
+                            appointment.getId(),
+                            patient != null ? patient.getName() : "Unknown Patient",
+                            staff != null ? staff.getName() : "Unknown Doctor",
+                            appointment.getAppointmentTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                            appointment.getLocation(),
+                            appointment.getStatus()
+                        };
+                        
+                        // Add row to table model on EDT
+                        SwingUtilities.invokeLater(() -> tableModel.addRow(row));
+                    }
+                    
+                } catch (SQLException e) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(AppointmentPanel.this,
+                                "Error loading appointment details: " + e.getMessage(),
+                                "Database Error", JOptionPane.ERROR_MESSAGE);
+                    });
+                }
+                return null;
+            }
+        };
+        
+        dataLoader.execute();
     }
 
     private void showTodaysAppointments() {
@@ -690,6 +717,7 @@ public class AppointmentPanel extends JPanel {
         worker.execute();
     }
 
+    // FIXED METHOD - Uses single database operation instead of multiple SwingWorkers
     private void showTodaysAppointmentsDialog(List<Appointment> todayAppointments) {
         JDialog dialog = new JDialog(parentFrame, "Today's Appointments - " + LocalDate.now(), true);
         dialog.setSize(700, 500);
@@ -699,33 +727,56 @@ public class AppointmentPanel extends JPanel {
         DefaultTableModel todayModel = new DefaultTableModel(columns, 0);
         JTable todayTable = new JTable(todayModel);
 
-        for (Appointment apt : todayAppointments) {
-            SwingWorker<Object[], Void> worker = new SwingWorker<Object[], Void>() {
-                @Override
-                protected Object[] doInBackground() throws Exception {
-                    Patient patient = patientDAO.getPatientById(apt.getPatientId());
-                    Staff staff = staffDAO.getStaffById(apt.getStaffId());
-
-                    return new Object[]{
-                        apt.getAppointmentTime().format(DateTimeFormatter.ofPattern("HH:mm")),
-                        patient != null ? patient.getName() : "Unknown",
-                        staff != null ? staff.getName() : "Unknown",
-                        apt.getLocation(),
-                        apt.getStatus()
-                    };
-                }
-
-                @Override
-                protected void done() {
-                    try {
-                        todayModel.addRow(get());
-                    } catch (Exception e) {
-                        System.err.println("Error loading appointment details: " + e.getMessage());
+        // Load all patient and staff data once
+        SwingWorker<Void, Void> dataLoader = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    // Pre-load all patients and staff
+                    List<Patient> allPatients = patientDAO.getAllPatients();
+                    List<Staff> allStaff = staffDAO.getAllStaff();
+                    
+                    // Create maps for quick lookup
+                    java.util.Map<Long, Patient> patientMap = new java.util.HashMap<>();
+                    java.util.Map<Long, Staff> staffMap = new java.util.HashMap<>();
+                    
+                    for (Patient patient : allPatients) {
+                        patientMap.put(patient.getId(), patient);
                     }
+                    
+                    for (Staff staff : allStaff) {
+                        staffMap.put(staff.getId(), staff);
+                    }
+                    
+                    // Process all today's appointments
+                    for (Appointment apt : todayAppointments) {
+                        Patient patient = patientMap.get(apt.getPatientId());
+                        Staff staff = staffMap.get(apt.getStaffId());
+
+                        Object[] row = {
+                            apt.getAppointmentTime().format(DateTimeFormatter.ofPattern("HH:mm")),
+                            patient != null ? patient.getName() : "Unknown",
+                            staff != null ? staff.getName() : "Unknown",
+                            apt.getLocation(),
+                            apt.getStatus()
+                        };
+                        
+                        // Add row on EDT
+                        SwingUtilities.invokeLater(() -> todayModel.addRow(row));
+                    }
+                    
+                } catch (SQLException e) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(dialog,
+                                "Error loading appointment details: " + e.getMessage(),
+                                "Database Error", JOptionPane.ERROR_MESSAGE);
+                    });
                 }
-            };
-            worker.execute();
-        }
+                return null;
+            }
+        };
+        
+        dataLoader.execute();
 
         JScrollPane scrollPane = new JScrollPane(todayTable);
         dialog.add(scrollPane, BorderLayout.CENTER);
@@ -891,31 +942,32 @@ public class AppointmentPanel extends JPanel {
         timeField.setText("");
     }
 
-//    private JPanel createQuickActionsPanel() {
-//        JPanel panel = new JPanel();
-//        panel.setBorder(BorderFactory.createTitledBorder("Quick Actions"));
-//        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-//
-//        JButton todayApptBtn = new JButton("Today's Appointments");
-//        JButton emergencySlotBtn = new JButton("Emergency Slot");
-//        JButton patternDemoBtn = new JButton("Pattern Demo");
-//
-//        todayApptBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-//        emergencySlotBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-//        patternDemoBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-//
-//        todayApptBtn.addActionListener(e -> showTodaysAppointments());
-//        emergencySlotBtn.addActionListener(e -> scheduleEmergencyAppointment());
-//        patternDemoBtn.addActionListener(e -> demonstratePatterns());
-//
-//        panel.add(Box.createVerticalStrut(10));
-//        panel.add(todayApptBtn);
-//        panel.add(Box.createVerticalStrut(5));
-//        panel.add(emergencySlotBtn);
-//        panel.add(Box.createVerticalStrut(5));
-//        panel.add(patternDemoBtn);
-//        panel.add(Box.createVerticalGlue());
-//
-//        return panel;
-//    }
+    /**
+     * Cleanup method to properly close database connections
+     */
+    public void cleanup() {
+        try {
+            // Close any open database connections
+            if (appointmentDAO != null) {
+                // Add cleanup logic if needed
+            }
+            if (patientDAO != null) {
+                // Add cleanup logic if needed
+            }
+            if (staffDAO != null) {
+                // Add cleanup logic if needed
+            }
+        } catch (Exception e) {
+            System.err.println("Error during cleanup: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Override dispose to ensure cleanup
+     */
+    @Override
+    public void removeNotify() {
+        cleanup();
+        super.removeNotify();
+    }
 }

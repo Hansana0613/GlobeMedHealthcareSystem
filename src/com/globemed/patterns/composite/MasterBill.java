@@ -21,7 +21,7 @@ public class MasterBill extends BillComposite {
     private String insuranceDetails;
 
     public MasterBill(Long billId, Long appointmentId, String insuranceDetails) {
-        super("Medical Bill #" + billId);
+        super("Medical Bill #" + (billId != null ? billId : "NEW"));
         this.billId = billId;
         this.appointmentId = appointmentId;
         this.createdAt = LocalDateTime.now();
@@ -47,6 +47,10 @@ public class MasterBill extends BillComposite {
     // Getters and Setters
     public Long getBillId() {
         return billId;
+    }
+    
+    public void setBillId(Long billId) {
+        this.billId = billId;
     }
 
     public Long getAppointmentId() {

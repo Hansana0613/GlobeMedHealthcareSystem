@@ -86,6 +86,12 @@ public class BillDAO {
 
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
+            // Debug: Print the values being inserted
+            System.out.println("DEBUG DAO: Inserting bill with appointment_id: " + bill.getAppointmentId());
+            System.out.println("DEBUG DAO: Inserting bill with total_amount: " + bill.getTotalAmount());
+            System.out.println("DEBUG DAO: Inserting bill with claim_status: " + bill.getClaimStatus());
+            System.out.println("DEBUG DAO: Inserting bill with insurance_details: " + bill.getInsuranceDetails());
+
             stmt.setLong(1, bill.getAppointmentId());
             stmt.setBigDecimal(2, bill.getTotalAmount());
             stmt.setString(3, bill.getClaimStatus());
