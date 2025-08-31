@@ -257,7 +257,7 @@ public class DashboardPanel extends JPanel {
 
     private void setupEventHandlers() {
         // Timer for auto-refresh every 5 minutes
-        Timer refreshTimer = new Timer(300000, e -> refreshData());
+        Timer refreshTimer = new Timer(60000, e -> refreshData());
         refreshTimer.start();
     }
 

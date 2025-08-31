@@ -17,7 +17,7 @@ public class PatientDAO {
 
     public List<Patient> getAllPatients() throws SQLException {
         List<Patient> patients = new ArrayList<>();
-        String sql = "SELECT * FROM patients ORDER BY name";
+        String sql = "SELECT * FROM patients ORDER BY id";
 
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
 

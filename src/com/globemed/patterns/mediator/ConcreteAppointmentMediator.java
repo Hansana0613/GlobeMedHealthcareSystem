@@ -153,9 +153,9 @@ public class ConcreteAppointmentMediator implements AppointmentMediator {
     @Override
     public boolean checkRoomAvailability(String location, LocalDateTime time) {
         try {
-            // Check if room is available at the specified time (1-hour slots)
-            LocalDateTime startTime = time.minusMinutes(30);
-            LocalDateTime endTime = time.plusMinutes(30);
+            // Check if room is available at the specified time (30-min slots)
+            LocalDateTime startTime = time.minusMinutes(15);
+            LocalDateTime endTime = time.plusMinutes(15);
 
             List<Appointment> conflictingAppointments = appointmentDAO.getAppointmentsByLocationAndTimeRange(
                     location, startTime, endTime);
@@ -171,9 +171,9 @@ public class ConcreteAppointmentMediator implements AppointmentMediator {
     @Override
     public boolean checkStaffAvailability(Long staffId, LocalDateTime time) {
         try {
-            // Check if staff member is available at the specified time (1-hour slots)
-            LocalDateTime startTime = time.minusMinutes(30);
-            LocalDateTime endTime = time.plusMinutes(30);
+            // Check if staff member is available at the specified time (30-min slots)
+            LocalDateTime startTime = time.minusMinutes(15);
+            LocalDateTime endTime = time.plusMinutes(15);
 
             List<Appointment> conflictingAppointments = appointmentDAO.getAppointmentsByStaffAndTimeRange(
                     staffId, startTime, endTime);

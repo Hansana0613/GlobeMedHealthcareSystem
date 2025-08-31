@@ -8,6 +8,7 @@ import com.globemed.database.*;
 import com.globemed.models.*;
 import com.globemed.services.AppointmentService;
 import com.toedter.calendar.JCalendar;
+import com.toedter.calendar.JDateChooser;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -38,12 +39,12 @@ public class AppointmentPanel extends JPanel {
     private JComboBox<String> patientComboBox;
     private JComboBox<String> doctorComboBox;
     private JComboBox<String> locationComboBox;
-    private JTextField dateField;
-    private JTextField timeField;
     private JComboBox<String> statusComboBox;
     private JButton scheduleButton, rescheduleButton, cancelButton, refreshButton;
     private JTextArea notificationsArea;
     private JCalendar calendar; // Custom calendar component
+    private JDateChooser dateChooser;
+    private JSpinner timeSpinner;
 
     // Table columns
     private final String[] columnNames = {"ID", "Patient", "Doctor", "Date & Time", "Location", "Status"};
@@ -61,7 +62,7 @@ public class AppointmentPanel extends JPanel {
         initializeComponents();
         layoutComponents();
         setupEventHandlers();
-        
+
         // Initial data load
         refreshData();
     }
@@ -85,11 +86,34 @@ public class AppointmentPanel extends JPanel {
         locationComboBox = new JComboBox<>();
         statusComboBox = new JComboBox<>(statusOptions);
 
-        // Text fields
-        dateField = new JTextField(10);
-        dateField.setToolTipText("Format: YYYY-MM-DD");
-        timeField = new JTextField(8);
-        timeField.setToolTipText("Format: HH:MM");
+        // Date chooser
+        dateChooser = new JDateChooser();
+        dateChooser.setDateFormatString("yyyy-MM-dd");
+        dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now())); // default today
+
+        // Time spinner (HH:mm format)
+        SpinnerDateModel timeModel = new SpinnerDateModel();
+        timeSpinner = new JSpinner(timeModel);
+        JSpinner.DateEditor timeEditor = new JSpinner.DateEditor(timeSpinner, "HH:mm");
+        timeSpinner.setEditor(timeEditor);
+        timeSpinner.setValue(new java.util.Date()); // default current time
+        
+        // Set step size to 30 minutes
+        timeSpinner.addChangeListener(e -> {
+            java.util.Date currentValue = (java.util.Date) timeSpinner.getValue();
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.setTime(currentValue);
+            int minutes = cal.get(java.util.Calendar.MINUTE);
+            int adjustedMinutes = ((minutes + 15) / 30) * 30; // Round to nearest 30 minutes
+            if (adjustedMinutes >= 30) {
+                adjustedMinutes = 0;
+                cal.add(java.util.Calendar.HOUR, 1);
+            }
+            cal.set(java.util.Calendar.MINUTE, adjustedMinutes);
+            cal.set(java.util.Calendar.SECOND, 0);
+            cal.set(java.util.Calendar.MILLISECOND, 0);
+            timeSpinner.setValue(cal.getTime());
+        });
 
         // Buttons
         scheduleButton = new JButton("Schedule Appointment");
@@ -126,7 +150,7 @@ public class AppointmentPanel extends JPanel {
                     });
 
                     // Load staff (doctors)
-                    List<Staff> staff = staffDAO.getAllStaff();
+                    List<Staff> staff = staffDAO.getAllDoctors();
                     SwingUtilities.invokeLater(() -> {
                         doctorComboBox.removeAllItems();
                         doctorComboBox.addItem("Select Doctor");
@@ -257,12 +281,12 @@ public class AppointmentPanel extends JPanel {
         gbc.gridy = 1;
         formPanel.add(new JLabel("Date:"), gbc);
         gbc.gridx = 1;
-        formPanel.add(dateField, gbc);
+        formPanel.add(dateChooser, gbc);
 
         gbc.gridx = 2;
         formPanel.add(new JLabel("Time:"), gbc);
         gbc.gridx = 3;
-        formPanel.add(timeField, gbc);
+        formPanel.add(timeSpinner, gbc);
 
         // Row 3: Location and Status
         gbc.gridx = 0;
@@ -343,7 +367,8 @@ public class AppointmentPanel extends JPanel {
         refreshButton.addActionListener(e -> refreshData());
 
         // Set today's date by default
-        dateField.setText(LocalDate.now().toString());
+        dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now())); 
+
     }
 
     private void scheduleAppointment() {
@@ -422,8 +447,16 @@ public class AppointmentPanel extends JPanel {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
-        JTextField newDateField = new JTextField(10);
-        JTextField newTimeField = new JTextField(8);
+        JDateChooser newDateChooser = new JDateChooser();
+        newDateChooser.setDateFormatString("yyyy-MM-dd");
+        newDateChooser.setDate(java.sql.Date.valueOf(LocalDate.now()));
+        
+        SpinnerDateModel newTimeModel = new SpinnerDateModel();
+        JSpinner newTimeSpinner = new JSpinner(newTimeModel);
+        JSpinner.DateEditor newTimeEditor = new JSpinner.DateEditor(newTimeSpinner, "HH:mm");
+        newTimeSpinner.setEditor(newTimeEditor);
+        newTimeSpinner.setValue(new java.util.Date());
+        
         JComboBox<String> newLocationCombo = new JComboBox<>();
 
         // Populate location combo
@@ -436,13 +469,13 @@ public class AppointmentPanel extends JPanel {
         gbc.gridy = 0;
         content.add(new JLabel("New Date:"), gbc);
         gbc.gridx = 1;
-        content.add(newDateField, gbc);
+        content.add(newDateChooser, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 1;
         content.add(new JLabel("New Time:"), gbc);
         gbc.gridx = 1;
-        content.add(newTimeField, gbc);
+        content.add(newTimeSpinner, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 2;
@@ -462,8 +495,21 @@ public class AppointmentPanel extends JPanel {
 
         confirmBtn.addActionListener(e -> {
             try {
-                LocalDateTime newDateTime = LocalDateTime.parse(
-                        newDateField.getText() + "T" + newTimeField.getText() + ":00");
+                java.util.Date selectedDate = newDateChooser.getDate();
+                java.util.Date selectedTime = (java.util.Date) newTimeSpinner.getValue();
+                
+                if (selectedDate == null || selectedTime == null) {
+                    JOptionPane.showMessageDialog(rescheduleDialog,
+                            "Please select both date and time!",
+                            "Validation Error", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                
+                LocalDate date = new java.sql.Date(selectedDate.getTime()).toLocalDate();
+                LocalDateTime newDateTime = LocalDateTime.of(
+                        date,
+                        selectedTime.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+                );
                 String newLocation = (String) newLocationCombo.getSelectedItem();
 
                 boolean success = appointmentService.rescheduleAppointment(appointmentId, newDateTime, newLocation);
@@ -583,10 +629,21 @@ public class AppointmentPanel extends JPanel {
         }
     }
 
+
     private LocalDateTime parseDateTime() throws DateTimeParseException {
-        String dateText = dateField.getText().trim();
-        String timeText = timeField.getText().trim();
-        return LocalDateTime.parse(dateText + "T" + timeText + ":00");
+        java.util.Date selectedDate = dateChooser.getDate();
+        java.util.Date selectedTime = (java.util.Date) timeSpinner.getValue();
+
+        if (selectedDate == null || selectedTime == null) {
+            throw new DateTimeParseException("Date or time not selected", "", 0);
+        }
+
+        LocalDate date = new java.sql.Date(selectedDate.getTime()).toLocalDate();
+        LocalDateTime dateTime = LocalDateTime.of(
+                date,
+                selectedTime.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+        );
+        return dateTime;
     }
 
     private Long extractIdFromComboBox(JComboBox<String> comboBox) {
@@ -631,7 +688,7 @@ public class AppointmentPanel extends JPanel {
     private void updateTableData(List<Appointment> appointments) {
         // Clear the table first
         tableModel.setRowCount(0);
-        
+
         if (appointments == null || appointments.isEmpty()) {
             return;
         }
@@ -644,24 +701,24 @@ public class AppointmentPanel extends JPanel {
                     // Pre-load all patients and staff to avoid multiple database calls
                     List<Patient> allPatients = patientDAO.getAllPatients();
                     List<Staff> allStaff = staffDAO.getAllStaff();
-                    
+
                     // Create maps for quick lookup
                     java.util.Map<Long, Patient> patientMap = new java.util.HashMap<>();
                     java.util.Map<Long, Staff> staffMap = new java.util.HashMap<>();
-                    
+
                     for (Patient patient : allPatients) {
                         patientMap.put(patient.getId(), patient);
                     }
-                    
+
                     for (Staff staff : allStaff) {
                         staffMap.put(staff.getId(), staff);
                     }
-                    
+
                     // Process all appointments with the loaded data
                     for (Appointment appointment : appointments) {
                         Patient patient = patientMap.get(appointment.getPatientId());
                         Staff staff = staffMap.get(appointment.getStaffId());
-                        
+
                         Object[] row = {
                             appointment.getId(),
                             patient != null ? patient.getName() : "Unknown Patient",
@@ -670,11 +727,11 @@ public class AppointmentPanel extends JPanel {
                             appointment.getLocation(),
                             appointment.getStatus()
                         };
-                        
+
                         // Add row to table model on EDT
                         SwingUtilities.invokeLater(() -> tableModel.addRow(row));
                     }
-                    
+
                 } catch (SQLException e) {
                     SwingUtilities.invokeLater(() -> {
                         JOptionPane.showMessageDialog(AppointmentPanel.this,
@@ -685,7 +742,7 @@ public class AppointmentPanel extends JPanel {
                 return null;
             }
         };
-        
+
         dataLoader.execute();
     }
 
@@ -735,19 +792,19 @@ public class AppointmentPanel extends JPanel {
                     // Pre-load all patients and staff
                     List<Patient> allPatients = patientDAO.getAllPatients();
                     List<Staff> allStaff = staffDAO.getAllStaff();
-                    
+
                     // Create maps for quick lookup
                     java.util.Map<Long, Patient> patientMap = new java.util.HashMap<>();
                     java.util.Map<Long, Staff> staffMap = new java.util.HashMap<>();
-                    
+
                     for (Patient patient : allPatients) {
                         patientMap.put(patient.getId(), patient);
                     }
-                    
+
                     for (Staff staff : allStaff) {
                         staffMap.put(staff.getId(), staff);
                     }
-                    
+
                     // Process all today's appointments
                     for (Appointment apt : todayAppointments) {
                         Patient patient = patientMap.get(apt.getPatientId());
@@ -760,11 +817,11 @@ public class AppointmentPanel extends JPanel {
                             apt.getLocation(),
                             apt.getStatus()
                         };
-                        
+
                         // Add row on EDT
                         SwingUtilities.invokeLater(() -> todayModel.addRow(row));
                     }
-                    
+
                 } catch (SQLException e) {
                     SwingUtilities.invokeLater(() -> {
                         JOptionPane.showMessageDialog(dialog,
@@ -775,7 +832,7 @@ public class AppointmentPanel extends JPanel {
                 return null;
             }
         };
-        
+
         dataLoader.execute();
 
         JScrollPane scrollPane = new JScrollPane(todayTable);
@@ -938,8 +995,8 @@ public class AppointmentPanel extends JPanel {
         doctorComboBox.setSelectedIndex(0);
         locationComboBox.setSelectedIndex(0);
         statusComboBox.setSelectedIndex(0);
-        dateField.setText(LocalDate.now().toString());
-        timeField.setText("");
+        dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now()));
+        timeSpinner.setValue(new java.util.Date());
     }
 
     /**

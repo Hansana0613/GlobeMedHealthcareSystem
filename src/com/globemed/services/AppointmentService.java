@@ -69,7 +69,7 @@ public class AppointmentService {
         RoomComponent roomComponent = new RoomComponent(mediator, roomName, roomType, capacity);
         roomComponents.put(roomName, roomComponent);
 
-        System.out.println("Room " + roomName + " (" + roomType + ") added to appointment system");
+        //System.out.println("Room " + roomName + " (" + roomType + ") added to appointment system");
     }
 
     public void addAdminObserver(String adminName) {

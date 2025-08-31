@@ -66,7 +66,7 @@ public class CompositeRole implements RoleComponent {
         // Ensure role level hierarchy is maintained
         if (role.getRoleLevel() > this.roleLevel) {
             subRoles.add(role);
-            System.out.println("Added sub-role: " + role.getRoleName() + " to " + this.roleName);
+            //System.out.println("Added sub-role: " + role.getRoleName() + " to " + this.roleName);
         } else {
             System.out.println("Cannot add role " + role.getRoleName()
                     + " (Level " + role.getRoleLevel() + ") to " + this.roleName

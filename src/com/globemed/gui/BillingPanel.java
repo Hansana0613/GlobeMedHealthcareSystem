@@ -12,6 +12,8 @@ import javax.swing.SwingWorker;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -210,7 +212,72 @@ public class BillingPanel extends JPanel {
             }
         });
 
+        // Add mouse shortcuts for the bills table
+        billsTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showContextMenu(e);
+                }
+            }
+            
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showContextMenu(e);
+                }
+            }
+        });
+
         return panel;
+    }
+
+    /**
+     * Show context menu for right-click on bills table
+     */
+    private void showContextMenu(MouseEvent e) {
+        int row = billsTable.rowAtPoint(e.getPoint());
+        if (row >= 0) {
+            billsTable.setRowSelectionInterval(row, row);
+            
+            JPopupMenu contextMenu = new JPopupMenu();
+            
+            JMenuItem addBillItemsItem = new JMenuItem("Add Bill Items");
+            addBillItemsItem.addActionListener(evt -> {
+                // Switch to Create Bill tab
+                JTabbedPane tabbedPane = (JTabbedPane) SwingUtilities.getAncestorOfClass(JTabbedPane.class, billsTable);
+                if (tabbedPane != null) {
+                    tabbedPane.setSelectedIndex(1); // Create Bill tab
+                }
+            });
+            
+            JMenuItem processClaimItem = new JMenuItem("Process Claims");
+            processClaimItem.addActionListener(evt -> {
+                // Switch to Process Claims tab
+                JTabbedPane tabbedPane = (JTabbedPane) SwingUtilities.getAncestorOfClass(JTabbedPane.class, billsTable);
+                if (tabbedPane != null) {
+                    tabbedPane.setSelectedIndex(2); // Process Claims tab
+                }
+            });
+            
+            JMenuItem viewDetailsItem = new JMenuItem("View Details");
+            viewDetailsItem.addActionListener(evt -> viewBillDetails());
+            
+            JMenuItem updateStatusItem = new JMenuItem("Update Status");
+            updateStatusItem.addActionListener(evt -> updateBillStatus());
+            
+            JMenuItem deleteItem = new JMenuItem("Delete Bill");
+            deleteItem.addActionListener(evt -> deleteBill());
+            
+            contextMenu.add(addBillItemsItem);
+            contextMenu.add(processClaimItem);
+            contextMenu.addSeparator();
+            contextMenu.add(viewDetailsItem);
+            contextMenu.add(updateStatusItem);
+            contextMenu.add(deleteItem);
+            
+            contextMenu.show(billsTable, e.getX(), e.getY());
+        }
     }
 
     private JPanel createBillCreationPanel() {

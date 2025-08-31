@@ -30,7 +30,7 @@ public class DatabaseConnection {
                 props.setProperty("allowPublicKeyRetrieval", "true");
 
                 connection = DriverManager.getConnection(URL, props);
-                System.out.println("Database connected successfully!");
+                //System.out.println("Database connected successfully!");
             } catch (ClassNotFoundException e) {
                 throw new SQLException("MySQL JDBC Driver not found", e);
             }

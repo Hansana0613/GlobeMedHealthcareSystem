@@ -29,6 +29,26 @@ public class StaffDAO {
         return staff;
     }
 
+    public List<Staff> getAllDoctors() throws SQLException {
+        List<Staff> doctors = new ArrayList<>();
+        String sql = "SELECT s.* "
+                + "FROM staff s "
+                + "JOIN roles r ON s.role_id = r.id "
+                + "WHERE r.name = ? "
+                + "ORDER BY s.name";
+
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, "Doctor"); // filter only doctors
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    doctors.add(mapResultSetToStaff(rs));
+                }
+            }
+        }
+        return doctors;
+    }
+
     public Staff getStaffById(Long id) throws SQLException {
         String sql = "SELECT * FROM staff WHERE id = ?";
 
