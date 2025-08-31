@@ -125,6 +125,7 @@ public class ConcreteAppointmentMediator implements AppointmentMediator {
             // Update appointment
             appointment.setAppointmentTime(newTime);
             appointment.setLocation(newLocation);
+            appointment.setStatus("SCHEDULED");
             boolean success = appointmentDAO.updateAppointment(appointment);
 
             if (success) {

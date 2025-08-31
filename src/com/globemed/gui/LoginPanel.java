@@ -8,17 +8,36 @@ import com.globemed.database.StaffDAO;
 import com.globemed.models.Staff;
 import com.globemed.utils.SecurityUtils;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.sql.SQLException;
 
 /**
- * Login panel for user authentication
+ * Login panel for user authentication with enhanced UI/UX
  *
  * @author Hansana
  */
 public class LoginPanel extends JPanel {
+
+    // Color scheme constants
+    private static final Color PRIMARY_BLUE = new Color(46, 134, 171);
+    private static final Color CLEAN_WHITE = new Color(255, 255, 255);
+    private static final Color HEALTHCARE_GREEN = new Color(76, 175, 80);
+    private static final Color WARNING_AMBER = new Color(255, 152, 0);
+    private static final Color ERROR_RED = new Color(244, 67, 54);
+    private static final Color BACKGROUND_GRAY = new Color(245, 245, 245);
+    private static final Color TEXT_GRAY = new Color(117, 117, 117);
+    private static final Color BORDER_GRAY = new Color(224, 224, 224);
+
+    // Font constants
+    private static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 18);
+    private static final Font BODY_FONT = new Font("SansSerif", Font.PLAIN, 15);
+    private static final Font LABEL_FONT = new Font("SansSerif", Font.BOLD, 13);
+    private static final Font FIELD_FONT = new Font("SansSerif", Font.PLAIN, 13);
 
     private JTextField usernameField;
     private JPasswordField passwordField;
@@ -37,20 +56,142 @@ public class LoginPanel extends JPanel {
     }
 
     private void initializeComponents() {
-        // Initialize components
-        usernameField = new JTextField(20);
-        passwordField = new JPasswordField(20);
-        loginButton = new JButton("Login");
-        cancelButton = new JButton("Cancel");
+        // Initialize text fields with enhanced styling
+        usernameField = createStyledTextField();
+        passwordField = createStyledPasswordField();
+
+        // Initialize buttons with enhanced styling
+        loginButton = createPrimaryButton("Login");
+        cancelButton = createSecondaryButton("Cancel");
+
+        // Initialize status label
         statusLabel = new JLabel(" ");
+        statusLabel.setFont(BODY_FONT);
+        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        statusLabel.setForeground(TEXT_GRAY);
+    }
 
-        // Set component properties
-        loginButton.setPreferredSize(new Dimension(100, 30));
-        cancelButton.setPreferredSize(new Dimension(100, 30));
-        statusLabel.setForeground(Color.RED);
+    private JTextField createStyledTextField() {
+        JTextField field = new JTextField(20);
+        field.setFont(FIELD_FONT);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_GRAY, 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        field.setPreferredSize(new Dimension(240, 44));
+        field.setBackground(CLEAN_WHITE);
 
-        // Set default button
-        //getRootPane().setDefaultButton(loginButton);
+        // Add focus effects
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(PRIMARY_BLUE, 2),
+                        BorderFactory.createEmptyBorder(7, 11, 7, 11)
+                ));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(BORDER_GRAY, 1),
+                        BorderFactory.createEmptyBorder(8, 12, 8, 12)
+                ));
+            }
+        });
+
+        return field;
+    }
+
+    private JPasswordField createStyledPasswordField() {
+        JPasswordField field = new JPasswordField(20);
+        field.setFont(FIELD_FONT);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_GRAY, 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        field.setPreferredSize(new Dimension(240, 44));
+        field.setBackground(CLEAN_WHITE);
+
+        // Add focus effects
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(PRIMARY_BLUE, 2),
+                        BorderFactory.createEmptyBorder(7, 11, 7, 11)
+                ));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(BORDER_GRAY, 1),
+                        BorderFactory.createEmptyBorder(8, 12, 8, 12)
+                ));
+            }
+        });
+
+        return field;
+    }
+
+    private JButton createPrimaryButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(LABEL_FONT);
+        button.setPreferredSize(new Dimension(120, 44));
+        button.setBackground(PRIMARY_BLUE);
+        button.setForeground(CLEAN_WHITE);
+        button.setBorder(BorderFactory.createEmptyBorder(12, 24, 12, 24));
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // Add hover effects
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                if (button.isEnabled()) {
+                    button.setBackground(PRIMARY_BLUE.darker());
+                }
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                if (button.isEnabled()) {
+                    button.setBackground(PRIMARY_BLUE);
+                }
+            }
+        });
+
+        return button;
+    }
+
+    private JButton createSecondaryButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(LABEL_FONT);
+        button.setPreferredSize(new Dimension(120, 44));
+        button.setBackground(CLEAN_WHITE);
+        button.setForeground(TEXT_GRAY);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_GRAY, 1),
+                BorderFactory.createEmptyBorder(11, 23, 11, 23)
+        ));
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // Add hover effects
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(BACKGROUND_GRAY);
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(CLEAN_WHITE);
+            }
+        });
+
+        return button;
     }
 
     public JButton getLoginButton() {
@@ -59,85 +200,114 @@ public class LoginPanel extends JPanel {
 
     private void layoutComponents() {
         setLayout(new BorderLayout());
-        setBackground(new Color(245, 245, 245));
+        setBackground(BACKGROUND_GRAY);
 
-        // Main panel
-        JPanel mainPanel = new JPanel(new GridBagLayout());
-        mainPanel.setBackground(Color.WHITE);
-        mainPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createRaisedBevelBorder(),
-                BorderFactory.createEmptyBorder(30, 30, 30, 30)
+        // Create main container with proper spacing
+        JPanel mainContainer = new JPanel(new GridBagLayout());
+        mainContainer.setBackground(BACKGROUND_GRAY);
+
+        // Create login card
+        JPanel loginCard = new JPanel();
+        loginCard.setLayout(new BoxLayout(loginCard, BoxLayout.Y_AXIS));
+        loginCard.setBackground(CLEAN_WHITE);
+        loginCard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_GRAY, 1),
+                new EmptyBorder(40, 40, 40, 40)
         ));
+        loginCard.setPreferredSize(new Dimension(400, 480));
 
+        // Header section
+        JPanel headerPanel = createHeaderPanel();
+        loginCard.add(headerPanel);
+        loginCard.add(Box.createVerticalStrut(32));
+
+        // Form section
+        JPanel formPanel = createFormPanel();
+        loginCard.add(formPanel);
+        loginCard.add(Box.createVerticalStrut(24));
+
+        // Button section
+        JPanel buttonPanel = createButtonPanel();
+        loginCard.add(buttonPanel);
+        loginCard.add(Box.createVerticalStrut(16));
+
+        // Status section
+        loginCard.add(statusLabel);
+
+        // Add login card to main container
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-
-        // Title
-        JLabel titleLabel = new JLabel("GlobeMed Healthcare System");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        titleLabel.setForeground(new Color(0, 100, 150));
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
-        mainPanel.add(titleLabel, gbc);
+        mainContainer.add(loginCard, gbc);
+
+        add(mainContainer, BorderLayout.CENTER);
+    }
+
+    private JPanel createHeaderPanel() {
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setBackground(CLEAN_WHITE);
+
+        // Title
+        JLabel titleLabel = new JLabel("GlobeMed Healthcare");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(PRIMARY_BLUE);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // Subtitle
-        JLabel subtitleLabel = new JLabel("Please enter your credentials to continue");
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        subtitleLabel.setForeground(Color.GRAY);
+        JLabel subtitleLabel = new JLabel("Staff Login Portal");
+        subtitleLabel.setFont(HEADER_FONT);
+        subtitleLabel.setForeground(TEXT_GRAY);
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        headerPanel.add(titleLabel);
+        headerPanel.add(Box.createVerticalStrut(8));
+        headerPanel.add(subtitleLabel);
+
+        return headerPanel;
+    }
+
+    private JPanel createFormPanel() {
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(CLEAN_WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+
+        // Username field
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(0, 0, 8, 0);
+        JLabel usernameLabel = new JLabel("Username");
+        usernameLabel.setFont(LABEL_FONT);
+        usernameLabel.setForeground(TEXT_GRAY);
+        formPanel.add(usernameLabel, gbc);
+
         gbc.gridy = 1;
-        mainPanel.add(subtitleLabel, gbc);
+        gbc.insets = new Insets(0, 0, 16, 0);
+        formPanel.add(usernameField, gbc);
 
-        // Username
-        gbc.gridwidth = 1;
-        gbc.anchor = GridBagConstraints.EAST;
+        // Password field
         gbc.gridy = 2;
-        gbc.gridx = 0;
-        JLabel usernameLabel = new JLabel("Username:");
-        usernameLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        mainPanel.add(usernameLabel, gbc);
+        gbc.insets = new Insets(0, 0, 8, 0);
+        JLabel passwordLabel = new JLabel("Password");
+        passwordLabel.setFont(LABEL_FONT);
+        passwordLabel.setForeground(TEXT_GRAY);
+        formPanel.add(passwordLabel, gbc);
 
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.gridx = 1;
-        mainPanel.add(usernameField, gbc);
-
-        // Password
-        gbc.anchor = GridBagConstraints.EAST;
         gbc.gridy = 3;
-        gbc.gridx = 0;
-        JLabel passwordLabel = new JLabel("Password:");
-        passwordLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        mainPanel.add(passwordLabel, gbc);
+        gbc.insets = new Insets(0, 0, 0, 0);
+        formPanel.add(passwordField, gbc);
 
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.gridx = 1;
-        mainPanel.add(passwordField, gbc);
+        return formPanel;
+    }
 
-        // Buttons
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        buttonPanel.setBackground(Color.WHITE);
+    private JPanel createButtonPanel() {
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 0));
+        buttonPanel.setBackground(CLEAN_WHITE);
         buttonPanel.add(loginButton);
         buttonPanel.add(cancelButton);
-
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        mainPanel.add(buttonPanel, gbc);
-
-        // Status label
-        gbc.gridy = 5;
-        mainPanel.add(statusLabel, gbc);
-
-        // Add main panel to center
-        add(mainPanel, BorderLayout.CENTER);
-
-        // Add some padding
-        add(new JPanel(), BorderLayout.NORTH);
-        add(new JPanel(), BorderLayout.SOUTH);
-        add(new JPanel(), BorderLayout.EAST);
-        add(new JPanel(), BorderLayout.WEST);
+        return buttonPanel;
     }
 
     private void setupEventHandlers() {
@@ -155,9 +325,12 @@ public class LoginPanel extends JPanel {
             }
         });
 
-        // Enter key support
+        // Enhanced keyboard navigation
         usernameField.addActionListener(e -> passwordField.requestFocus());
         passwordField.addActionListener(e -> performLogin());
+
+        // Set initial focus
+        SwingUtilities.invokeLater(() -> usernameField.requestFocus());
     }
 
     private void performLogin() {
@@ -169,8 +342,8 @@ public class LoginPanel extends JPanel {
             return;
         }
 
-        // Show loading
-        loginButton.setEnabled(false);
+        // Show loading state
+        setLoginState(false);
         showStatus("Authenticating...", false);
 
         SwingWorker<Staff, Void> worker = new SwingWorker<Staff, Void>() {
@@ -181,13 +354,20 @@ public class LoginPanel extends JPanel {
 
             @Override
             protected void done() {
-                loginButton.setEnabled(true);
+                setLoginState(true);
                 try {
                     Staff staff = get();
                     if (staff != null) {
                         showStatus("Login successful! Welcome " + staff.getName(), false);
-                        parentFrame.setCurrentUser(staff);
-                        parentFrame.showMainInterface();
+                        statusLabel.setForeground(HEALTHCARE_GREEN);
+
+                        // Delay to show success message
+                        Timer timer = new Timer(1000, e -> {
+                            parentFrame.setCurrentUser(staff);
+                            parentFrame.showMainInterface();
+                        });
+                        timer.setRepeats(false);
+                        timer.start();
                     } else {
                         showStatus("Invalid username or password", true);
                         passwordField.setText("");
@@ -201,6 +381,20 @@ public class LoginPanel extends JPanel {
         };
 
         worker.execute();
+    }
+
+    private void setLoginState(boolean enabled) {
+        loginButton.setEnabled(enabled);
+        usernameField.setEnabled(enabled);
+        passwordField.setEnabled(enabled);
+
+        if (!enabled) {
+            loginButton.setText("Authenticating...");
+            loginButton.setBackground(PRIMARY_BLUE.brighter());
+        } else {
+            loginButton.setText("Login");
+            loginButton.setBackground(PRIMARY_BLUE);
+        }
     }
 
     private Staff authenticateUser(String username, String password) throws SQLException {
@@ -220,13 +414,21 @@ public class LoginPanel extends JPanel {
 
     private void showStatus(String message, boolean isError) {
         statusLabel.setText(message);
-        statusLabel.setForeground(isError ? Color.RED : new Color(0, 150, 0));
+        if (isError) {
+            statusLabel.setForeground(ERROR_RED);
+        } else if (message.contains("successful")) {
+            statusLabel.setForeground(HEALTHCARE_GREEN);
+        } else {
+            statusLabel.setForeground(TEXT_GRAY);
+        }
     }
 
     public void reset() {
         usernameField.setText("");
         passwordField.setText("");
         statusLabel.setText(" ");
-        usernameField.requestFocus();
+        statusLabel.setForeground(TEXT_GRAY);
+        setLoginState(true);
+        SwingUtilities.invokeLater(() -> usernameField.requestFocus());
     }
 }

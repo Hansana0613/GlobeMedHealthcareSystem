@@ -1,16 +1,17 @@
 /*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ * Enhanced Appointment Management Panel
+ * Improved UI/UX with medical color scheme and better layout
  */
 package com.globemed.gui;
 
 import com.globemed.database.*;
 import com.globemed.models.*;
 import com.globemed.services.AppointmentService;
-import com.toedter.calendar.JCalendar;
 import com.toedter.calendar.JDateChooser;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -22,10 +23,27 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
+ * Enhanced Appointment Management Panel with improved UI/UX
  *
  * @author Hansana
  */
 public class AppointmentPanel extends JPanel {
+
+    // Color Scheme Constants
+    private static final Color PRIMARY_COLOR = new Color(46, 134, 171);      // Medical Blue
+    private static final Color SECONDARY_COLOR = new Color(255, 255, 255);   // Clean White
+    private static final Color ACCENT_COLOR = new Color(76, 175, 80);        // Healthcare Green
+    private static final Color WARNING_COLOR = new Color(255, 152, 0);       // Amber
+    private static final Color ERROR_COLOR = new Color(244, 67, 54);         // Medical Red
+    private static final Color BACKGROUND_COLOR = new Color(245, 245, 245);  // Light Gray
+    private static final Color CARD_COLOR = new Color(255, 255, 255);        // White cards
+    private static final Color BORDER_COLOR = new Color(224, 224, 224);      // Light border
+
+    // Typography Constants
+    private static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 16);
+    private static final Font BODY_FONT = new Font("SansSerif", Font.PLAIN, 12);
+    private static final Font LABEL_FONT = new Font("SansSerif", Font.BOLD, 11);
+    private static final Font DATA_FONT = new Font("SansSerif", Font.PLAIN, 11);
 
     private MainFrame parentFrame;
     private AppointmentService appointmentService;
@@ -42,14 +60,11 @@ public class AppointmentPanel extends JPanel {
     private JComboBox<String> statusComboBox;
     private JButton scheduleButton, rescheduleButton, cancelButton, refreshButton;
     private JTextArea notificationsArea;
-    private JCalendar calendar; // Custom calendar component
     private JDateChooser dateChooser;
     private JSpinner timeSpinner;
 
     // Table columns
     private final String[] columnNames = {"ID", "Patient", "Doctor", "Date & Time", "Location", "Status"};
-
-    // Status options
     private final String[] statusOptions = {"SCHEDULED", "COMPLETED", "CANCELLED", "IN_PROGRESS"};
 
     public AppointmentPanel(MainFrame parentFrame) {
@@ -59,16 +74,15 @@ public class AppointmentPanel extends JPanel {
         this.patientDAO = new PatientDAO();
         this.staffDAO = new StaffDAO();
 
+        setBackground(BACKGROUND_COLOR);
         initializeComponents();
         layoutComponents();
         setupEventHandlers();
-
-        // Initial data load
         refreshData();
     }
 
     private void initializeComponents() {
-        // Table setup
+        // Enhanced Table setup
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -77,69 +91,415 @@ public class AppointmentPanel extends JPanel {
         };
 
         appointmentTable = new JTable(tableModel);
-        appointmentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        appointmentTable.setRowHeight(25);
+        styleTable();
 
-        // ComboBoxes
-        patientComboBox = new JComboBox<>();
-        doctorComboBox = new JComboBox<>();
-        locationComboBox = new JComboBox<>();
+        // Enhanced ComboBoxes
+        patientComboBox = createStyledComboBox();
+        doctorComboBox = createStyledComboBox();
+        locationComboBox = createStyledComboBox();
         statusComboBox = new JComboBox<>(statusOptions);
+        styleComboBox(statusComboBox);
 
-        // Date chooser
+        // Enhanced Date/Time components
+        setupDateTimeComponents();
+
+        // Enhanced Buttons
+        setupButtons();
+
+        // Enhanced Notifications area
+        setupNotificationsArea();
+
+        loadComboBoxData();
+    }
+
+    private void styleTable() {
+        appointmentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        appointmentTable.setRowHeight(32);
+        appointmentTable.setFont(DATA_FONT);
+        appointmentTable.setBackground(SECONDARY_COLOR);
+        appointmentTable.setGridColor(BORDER_COLOR);
+        appointmentTable.setSelectionBackground(new Color(PRIMARY_COLOR.getRed(), PRIMARY_COLOR.getGreen(), PRIMARY_COLOR.getBlue(), 30));
+        appointmentTable.setSelectionForeground(Color.BLACK);
+
+        // Style table header
+        JTableHeader header = appointmentTable.getTableHeader();
+        header.setFont(LABEL_FONT);
+        header.setBackground(PRIMARY_COLOR);
+        header.setForeground(SECONDARY_COLOR);
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 36));
+
+        // Custom cell renderer for status column
+        appointmentTable.getColumnModel().getColumn(5).setCellRenderer(new StatusCellRenderer());
+    }
+
+    private JComboBox<String> createStyledComboBox() {
+        JComboBox<String> combo = new JComboBox<>();
+        styleComboBox(combo);
+        return combo;
+    }
+
+    private void styleComboBox(JComboBox<?> combo) {
+        combo.setFont(DATA_FONT);
+        combo.setBackground(SECONDARY_COLOR);
+        combo.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
+        combo.setPreferredSize(new Dimension(combo.getPreferredSize().width, 32));
+    }
+
+    private void setupDateTimeComponents() {
         dateChooser = new JDateChooser();
         dateChooser.setDateFormatString("yyyy-MM-dd");
-        dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now())); // default today
+        dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now()));
+        dateChooser.setFont(DATA_FONT);
+        dateChooser.setPreferredSize(new Dimension(150, 32));
 
-        // Time spinner (HH:mm format)
         SpinnerDateModel timeModel = new SpinnerDateModel();
         timeSpinner = new JSpinner(timeModel);
         JSpinner.DateEditor timeEditor = new JSpinner.DateEditor(timeSpinner, "HH:mm");
         timeSpinner.setEditor(timeEditor);
-        timeSpinner.setValue(new java.util.Date()); // default current time
-        
-        // Set step size to 30 minutes
-        timeSpinner.addChangeListener(e -> {
-            java.util.Date currentValue = (java.util.Date) timeSpinner.getValue();
-            java.util.Calendar cal = java.util.Calendar.getInstance();
-            cal.setTime(currentValue);
-            int minutes = cal.get(java.util.Calendar.MINUTE);
-            int adjustedMinutes = ((minutes + 15) / 30) * 30; // Round to nearest 30 minutes
-            if (adjustedMinutes >= 30) {
-                adjustedMinutes = 0;
-                cal.add(java.util.Calendar.HOUR, 1);
-            }
-            cal.set(java.util.Calendar.MINUTE, adjustedMinutes);
-            cal.set(java.util.Calendar.SECOND, 0);
-            cal.set(java.util.Calendar.MILLISECOND, 0);
-            timeSpinner.setValue(cal.getTime());
-        });
+        timeSpinner.setValue(new java.util.Date());
+        timeSpinner.setFont(DATA_FONT);
+        timeSpinner.setPreferredSize(new Dimension(80, 32));
+    }
 
-        // Buttons
-        scheduleButton = new JButton("Schedule Appointment");
-        rescheduleButton = new JButton("Reschedule");
-        cancelButton = new JButton("Cancel Appointment");
-        refreshButton = new JButton("Refresh");
+    private void setupButtons() {
+        scheduleButton = createStyledButton("Schedule Appointment", ACCENT_COLOR, "schedule");
+        rescheduleButton = createStyledButton("Reschedule", WARNING_COLOR, "reschedule");
+        cancelButton = createStyledButton("Cancel", ERROR_COLOR, "cancel");
+        refreshButton = createStyledButton("Refresh", PRIMARY_COLOR, "refresh");
 
         rescheduleButton.setEnabled(false);
         cancelButton.setEnabled(false);
-
-        // Notifications area
-        notificationsArea = new JTextArea(8, 30);
-        notificationsArea.setEditable(false);
-        notificationsArea.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        notificationsArea.setBackground(new Color(248, 248, 255));
-
-        // Load combo box data
-        loadComboBoxData();
     }
 
+    private JButton createStyledButton(String text, Color bgColor, String type) {
+        JButton button = new JButton(text);
+        button.setFont(LABEL_FONT);
+        button.setBackground(bgColor);
+        button.setForeground(SECONDARY_COLOR);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // Add icons based on type
+        String iconText = getIconForButton(type);
+        if (!iconText.isEmpty()) {
+            button.setText(iconText + " " + text);
+        }
+
+        // Hover effects
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor.brighter());
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+
+    private String getIconForButton(String type) {
+        switch (type) {
+            case "schedule":
+                return "📅";
+            case "reschedule":
+                return "🔄";
+            case "cancel":
+                return "❌";
+            case "refresh":
+                return "🔄";
+            case "check":
+                return "🔍";
+            case "clear":
+                return "🗑️";
+            case "emergency":
+                return "🚨";
+            default:
+                return "";
+        }
+    }
+
+    private void setupNotificationsArea() {
+        notificationsArea = new JTextArea(6, 25);
+        notificationsArea.setEditable(false);
+        notificationsArea.setFont(DATA_FONT);
+        notificationsArea.setBackground(CARD_COLOR);
+        notificationsArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+    }
+
+    private void layoutComponents() {
+        setLayout(new BorderLayout(0, 16));
+        setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+        // Header Panel
+        add(createHeaderPanel(), BorderLayout.NORTH);
+
+        // Main Content Panel
+        add(createMainContentPanel(), BorderLayout.CENTER);
+    }
+
+    private JPanel createHeaderPanel() {
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(BACKGROUND_COLOR);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
+
+        // Title with icon
+        JLabel titleLabel = new JLabel("🏥 Appointment Management");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
+        titleLabel.setForeground(PRIMARY_COLOR);
+
+        // Demo button
+        JButton patternsDemo = createStyledButton("Design Patterns Demo", PRIMARY_COLOR, "");
+        patternsDemo.addActionListener(e -> demonstratePatterns());
+
+        headerPanel.add(titleLabel, BorderLayout.WEST);
+        headerPanel.add(patternsDemo, BorderLayout.EAST);
+
+        return headerPanel;
+    }
+
+    private JPanel createMainContentPanel() {
+        JPanel mainPanel = new JPanel(new BorderLayout(16, 0));
+        mainPanel.setBackground(BACKGROUND_COLOR);
+
+        // Left panel - Appointments and Form
+        JPanel leftPanel = new JPanel(new BorderLayout(0, 16));
+        leftPanel.setBackground(BACKGROUND_COLOR);
+
+        // Appointments table card
+        leftPanel.add(createAppointmentsTableCard(), BorderLayout.CENTER);
+
+        // Scheduling form card
+        leftPanel.add(createSchedulingFormCard(), BorderLayout.SOUTH);
+
+        // Right panel - Notifications and Quick Actions
+        JPanel rightPanel = new JPanel(new BorderLayout(0, 16));
+        rightPanel.setBackground(BACKGROUND_COLOR);
+        rightPanel.setPreferredSize(new Dimension(320, 0));
+
+        rightPanel.add(createNotificationsCard(), BorderLayout.CENTER);
+        rightPanel.add(createQuickActionsCard(), BorderLayout.SOUTH);
+
+        mainPanel.add(leftPanel, BorderLayout.CENTER);
+        mainPanel.add(rightPanel, BorderLayout.EAST);
+
+        return mainPanel;
+    }
+
+    private JPanel createAppointmentsTableCard() {
+        JPanel card = createCard("📋 Scheduled Appointments");
+        card.setLayout(new BorderLayout(0, 8));
+
+        // Table with scroll
+        JScrollPane tableScroll = new JScrollPane(appointmentTable);
+        tableScroll.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+        tableScroll.setPreferredSize(new Dimension(0, 280));
+        card.add(tableScroll, BorderLayout.CENTER);
+
+        // Action buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        buttonPanel.setBackground(CARD_COLOR);
+        buttonPanel.add(refreshButton);
+        buttonPanel.add(rescheduleButton);
+        buttonPanel.add(cancelButton);
+
+        card.add(buttonPanel, BorderLayout.SOUTH);
+        return card;
+    }
+
+    private JPanel createSchedulingFormCard() {
+        JPanel card = createCard("➕ Schedule New Appointment");
+        card.setLayout(new GridBagLayout());
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        // Row 1: Patient and Doctor
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        card.add(createLabel("Patient:"), gbc);
+        gbc.gridx = 1;
+        card.add(patientComboBox, gbc);
+
+        gbc.gridx = 2;
+        card.add(createLabel("Doctor:"), gbc);
+        gbc.gridx = 3;
+        card.add(doctorComboBox, gbc);
+
+        // Row 2: Date and Time
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        card.add(createLabel("Date:"), gbc);
+        gbc.gridx = 1;
+        card.add(dateChooser, gbc);
+
+        gbc.gridx = 2;
+        card.add(createLabel("Time:"), gbc);
+        gbc.gridx = 3;
+        card.add(timeSpinner, gbc);
+
+        // Row 3: Location and Status
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        card.add(createLabel("Location:"), gbc);
+        gbc.gridx = 1;
+        card.add(locationComboBox, gbc);
+
+        gbc.gridx = 2;
+        card.add(createLabel("Status:"), gbc);
+        gbc.gridx = 3;
+        card.add(statusComboBox, gbc);
+
+        // Row 4: Action buttons
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
+        actionPanel.setBackground(CARD_COLOR);
+
+        actionPanel.add(scheduleButton);
+
+        JButton checkAvailabilityBtn = createStyledButton("Check Availability", PRIMARY_COLOR, "check");
+        checkAvailabilityBtn.addActionListener(e -> checkAvailability());
+        actionPanel.add(checkAvailabilityBtn);
+
+        JButton clearFormBtn = createStyledButton("Clear Form", new Color(128, 128, 128), "clear");
+        clearFormBtn.addActionListener(e -> clearSchedulingForm());
+        actionPanel.add(clearFormBtn);
+
+        card.add(actionPanel, gbc);
+        return card;
+    }
+
+    private JPanel createNotificationsCard() {
+        JPanel card = createCard("🔔 System Notifications");
+        card.setLayout(new BorderLayout(0, 8));
+
+        JScrollPane notifScroll = new JScrollPane(notificationsArea);
+        notifScroll.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+        notifScroll.setPreferredSize(new Dimension(0, 200));
+        card.add(notifScroll, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        buttonPanel.setBackground(CARD_COLOR);
+
+        JButton clearNotifBtn = createStyledButton("Clear", new Color(128, 128, 128), "clear");
+        clearNotifBtn.addActionListener(e -> notificationsArea.setText(""));
+        buttonPanel.add(clearNotifBtn);
+
+        card.add(buttonPanel, BorderLayout.SOUTH);
+        return card;
+    }
+
+    private JPanel createQuickActionsCard() {
+        JPanel card = createCard("⚡ Quick Actions");
+        card.setLayout(new GridLayout(3, 1, 8, 8));
+
+        JButton todayApptBtn = createStyledButton("Today's Appointments", ACCENT_COLOR, "");
+        JButton emergencySlotBtn = createStyledButton("Emergency Slot", ERROR_COLOR, "emergency");
+        JButton patternDemoBtn = createStyledButton("Pattern Demo", PRIMARY_COLOR, "");
+
+        todayApptBtn.addActionListener(e -> showTodaysAppointments());
+        emergencySlotBtn.addActionListener(e -> scheduleEmergencyAppointment());
+        patternDemoBtn.addActionListener(e -> demonstratePatterns());
+
+        card.add(todayApptBtn);
+        card.add(emergencySlotBtn);
+        card.add(patternDemoBtn);
+
+        return card;
+    }
+
+    private JPanel createCard(String title) {
+        JPanel card = new JPanel();
+        card.setBackground(CARD_COLOR);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(16, 16, 16, 16)
+        ));
+
+        // Add title if provided
+        if (title != null && !title.isEmpty()) {
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                    BorderFactory.createTitledBorder(
+                            BorderFactory.createEmptyBorder(8, 16, 16, 16),
+                            title,
+                            0,
+                            0,
+                            HEADER_FONT,
+                            PRIMARY_COLOR
+                    )
+            ));
+        }
+
+        return card;
+    }
+
+    private JLabel createLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(LABEL_FONT);
+        label.setForeground(new Color(64, 64, 64));
+        return label;
+    }
+
+    // Status cell renderer for color-coded status
+    private class StatusCellRenderer extends DefaultTableCellRenderer {
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            if (value != null) {
+                String status = value.toString();
+                setHorizontalAlignment(SwingConstants.CENTER);
+                setFont(new Font("SansSerif", Font.BOLD, 10));
+
+                if (!isSelected) {
+                    switch (status) {
+                        case "SCHEDULED":
+                            setBackground(new Color(ACCENT_COLOR.getRed(), ACCENT_COLOR.getGreen(), ACCENT_COLOR.getBlue(), 30));
+                            setForeground(ACCENT_COLOR);
+                            break;
+                        case "COMPLETED":
+                            setBackground(new Color(76, 175, 80, 30));
+                            setForeground(new Color(76, 175, 80));
+                            break;
+                        case "CANCELLED":
+                            setBackground(new Color(ERROR_COLOR.getRed(), ERROR_COLOR.getGreen(), ERROR_COLOR.getBlue(), 30));
+                            setForeground(ERROR_COLOR);
+                            break;
+                        case "IN_PROGRESS":
+                            setBackground(new Color(WARNING_COLOR.getRed(), WARNING_COLOR.getGreen(), WARNING_COLOR.getBlue(), 30));
+                            setForeground(WARNING_COLOR);
+                            break;
+                        default:
+                            setBackground(SECONDARY_COLOR);
+                            setForeground(Color.BLACK);
+                    }
+                }
+            }
+            return this;
+        }
+    }
+
+    // Data loading methods (keeping existing logic)
     private void loadComboBoxData() {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
                 try {
-                    // Load patients
                     List<Patient> patients = patientDAO.getAllPatients();
                     SwingUtilities.invokeLater(() -> {
                         patientComboBox.removeAllItems();
@@ -149,7 +509,6 @@ public class AppointmentPanel extends JPanel {
                         }
                     });
 
-                    // Load staff (doctors)
                     List<Staff> staff = staffDAO.getAllDoctors();
                     SwingUtilities.invokeLater(() -> {
                         doctorComboBox.removeAllItems();
@@ -159,7 +518,6 @@ public class AppointmentPanel extends JPanel {
                         }
                     });
 
-                    // Load locations
                     List<String> rooms = appointmentService.getAvailableRooms();
                     SwingUtilities.invokeLater(() -> {
                         locationComboBox.removeAllItems();
@@ -171,187 +529,16 @@ public class AppointmentPanel extends JPanel {
 
                 } catch (SQLException e) {
                     SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(AppointmentPanel.this,
-                                "Error loading data: " + e.getMessage(),
-                                "Database Error", JOptionPane.ERROR_MESSAGE);
+                        showErrorDialog("Error loading data: " + e.getMessage());
                     });
                 }
                 return null;
             }
         };
-
         worker.execute();
     }
 
-    private void layoutComponents() {
-        setLayout(new BorderLayout());
-
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        JLabel titleLabel = new JLabel("Appointment Management");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        headerPanel.add(titleLabel, BorderLayout.WEST);
-
-        JButton patternsDemo = new JButton("Show Mediator/Observer Demo");
-        patternsDemo.addActionListener(e -> demonstratePatterns());
-        headerPanel.add(patternsDemo, BorderLayout.EAST);
-
-        add(headerPanel, BorderLayout.NORTH);
-
-        // Main content with split pane
-        JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        mainSplit.setDividerLocation(800);
-
-        // Left panel - appointments table and form
-        JPanel leftPanel = new JPanel(new BorderLayout());
-
-        // Appointments table
-        JPanel tablePanel = new JPanel(new BorderLayout());
-        tablePanel.setBorder(BorderFactory.createTitledBorder("Scheduled Appointments"));
-
-        JScrollPane tableScroll = new JScrollPane(appointmentTable);
-        tableScroll.setPreferredSize(new Dimension(750, 300));
-        tablePanel.add(tableScroll, BorderLayout.CENTER);
-
-        JPanel tableButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        tableButtons.add(refreshButton);
-        tableButtons.add(rescheduleButton);
-        tableButtons.add(cancelButton);
-        tablePanel.add(tableButtons, BorderLayout.SOUTH);
-
-        leftPanel.add(tablePanel, BorderLayout.CENTER);
-
-        // Scheduling form
-        JPanel formPanel = createSchedulingForm();
-        leftPanel.add(formPanel, BorderLayout.SOUTH);
-
-        mainSplit.setLeftComponent(leftPanel);
-
-        // Right panel - notifications and calendar view
-        JPanel rightPanel = new JPanel(new BorderLayout());
-
-        // Notifications panel
-        JPanel notificationsPanel = new JPanel(new BorderLayout());
-        notificationsPanel.setBorder(BorderFactory.createTitledBorder("System Notifications"));
-
-        JScrollPane notifScroll = new JScrollPane(notificationsArea);
-        notifScroll.setPreferredSize(new Dimension(300, 200));
-        notificationsPanel.add(notifScroll, BorderLayout.CENTER);
-
-        JPanel notifButtons = new JPanel(new FlowLayout());
-        JButton clearNotifBtn = new JButton("Clear");
-        clearNotifBtn.addActionListener(e -> notificationsArea.setText(""));
-        notifButtons.add(clearNotifBtn);
-        notificationsPanel.add(notifButtons, BorderLayout.SOUTH);
-
-        rightPanel.add(notificationsPanel, BorderLayout.CENTER);
-
-        // Quick actions panel
-        JPanel quickActionsPanel = createQuickActionsPanel();
-        rightPanel.add(quickActionsPanel, BorderLayout.SOUTH);
-
-        mainSplit.setRightComponent(rightPanel);
-        add(mainSplit, BorderLayout.CENTER);
-    }
-
-    private JPanel createSchedulingForm() {
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createTitledBorder("Schedule New Appointment"));
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.anchor = GridBagConstraints.WEST;
-
-        // Row 1: Patient and Doctor
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        formPanel.add(new JLabel("Patient:"), gbc);
-        gbc.gridx = 1;
-        formPanel.add(patientComboBox, gbc);
-
-        gbc.gridx = 2;
-        formPanel.add(new JLabel("Doctor:"), gbc);
-        gbc.gridx = 3;
-        formPanel.add(doctorComboBox, gbc);
-
-        // Row 2: Date and Time
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        formPanel.add(new JLabel("Date:"), gbc);
-        gbc.gridx = 1;
-        formPanel.add(dateChooser, gbc);
-
-        gbc.gridx = 2;
-        formPanel.add(new JLabel("Time:"), gbc);
-        gbc.gridx = 3;
-        formPanel.add(timeSpinner, gbc);
-
-        // Row 3: Location and Status
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        formPanel.add(new JLabel("Location:"), gbc);
-        gbc.gridx = 1;
-        formPanel.add(locationComboBox, gbc);
-
-        gbc.gridx = 2;
-        formPanel.add(new JLabel("Status:"), gbc);
-        gbc.gridx = 3;
-        formPanel.add(statusComboBox, gbc);
-
-        // Row 4: Buttons
-        gbc.gridx = 0;
-        gbc.gridy = 3;
-        gbc.gridwidth = 4;
-        gbc.anchor = GridBagConstraints.CENTER;
-
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        buttonPanel.add(scheduleButton);
-
-        JButton checkAvailabilityBtn = new JButton("Check Availability");
-        checkAvailabilityBtn.addActionListener(e -> checkAvailability());
-        buttonPanel.add(checkAvailabilityBtn);
-
-        JButton clearFormBtn = new JButton("Clear Form");
-        clearFormBtn.addActionListener(e -> clearSchedulingForm());
-        buttonPanel.add(clearFormBtn);
-
-        formPanel.add(buttonPanel, gbc);
-
-        return formPanel;
-    }
-
-    private JPanel createQuickActionsPanel() {
-        JPanel panel = new JPanel();
-        panel.setBorder(BorderFactory.createTitledBorder("Quick Actions"));
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-
-        JButton todayApptBtn = new JButton("Today's Appointments");
-        JButton emergencySlotBtn = new JButton("Emergency Slot");
-        JButton patternDemoBtn = new JButton("Pattern Demo");
-
-        todayApptBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        emergencySlotBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        patternDemoBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        todayApptBtn.addActionListener(e -> showTodaysAppointments());
-        emergencySlotBtn.addActionListener(e -> scheduleEmergencyAppointment());
-        patternDemoBtn.addActionListener(e -> demonstratePatterns());
-
-        panel.add(Box.createVerticalStrut(10));
-        panel.add(todayApptBtn);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(emergencySlotBtn);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(patternDemoBtn);
-        panel.add(Box.createVerticalGlue());
-
-        return panel;
-    }
-
     private void setupEventHandlers() {
-        // Table selection
         appointmentTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 boolean hasSelection = appointmentTable.getSelectedRow() != -1;
@@ -360,17 +547,37 @@ public class AppointmentPanel extends JPanel {
             }
         });
 
-        // Button listeners
         scheduleButton.addActionListener(e -> scheduleAppointment());
         rescheduleButton.addActionListener(e -> rescheduleAppointment());
         cancelButton.addActionListener(e -> cancelAppointment());
         refreshButton.addActionListener(e -> refreshData());
 
-        // Set today's date by default
-        dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now())); 
-
+        dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now()));
     }
 
+    // Enhanced dialog methods
+    private void showErrorDialog(String message) {
+        JOptionPane.showMessageDialog(this,
+                "⚠️ " + message,
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void showSuccessDialog(String message) {
+        JOptionPane.showMessageDialog(this,
+                "✅ " + message,
+                "Success",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showWarningDialog(String message) {
+        JOptionPane.showMessageDialog(this,
+                "⚠️ " + message,
+                "Warning",
+                JOptionPane.WARNING_MESSAGE);
+    }
+
+    // Core appointment management methods (keeping existing logic with enhanced dialogs)
     private void scheduleAppointment() {
         if (!validateAppointmentForm()) {
             return;
@@ -383,8 +590,7 @@ public class AppointmentPanel extends JPanel {
             LocalDateTime appointmentTime = parseDateTime();
 
             if (patientId == null || staffId == null || location.equals("Select Location")) {
-                JOptionPane.showMessageDialog(this, "Please fill all required fields!",
-                        "Validation Error", JOptionPane.ERROR_MESSAGE);
+                showErrorDialog("Please fill all required fields!");
                 return;
             }
 
@@ -399,33 +605,55 @@ public class AppointmentPanel extends JPanel {
                     try {
                         boolean success = get();
                         if (success) {
-                            JOptionPane.showMessageDialog(AppointmentPanel.this,
-                                    "Appointment scheduled successfully!",
-                                    "Success", JOptionPane.INFORMATION_MESSAGE);
+                            showSuccessDialog("Appointment scheduled successfully!");
                             addNotification("✅ Appointment scheduled for " + appointmentTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
                             clearSchedulingForm();
                             refreshData();
                         } else {
-                            JOptionPane.showMessageDialog(AppointmentPanel.this,
-                                    "Failed to schedule appointment. Time slot may not be available.",
-                                    "Scheduling Error", JOptionPane.WARNING_MESSAGE);
+                            showWarningDialog("Failed to schedule appointment. Time slot may not be available.");
                         }
                     } catch (Exception e) {
-                        JOptionPane.showMessageDialog(AppointmentPanel.this,
-                                "Error scheduling appointment: " + e.getMessage(),
-                                "Error", JOptionPane.ERROR_MESSAGE);
+                        showErrorDialog("Error scheduling appointment: " + e.getMessage());
                     }
                 }
             };
-
             worker.execute();
 
         } catch (DateTimeParseException e) {
-            JOptionPane.showMessageDialog(this, "Invalid date/time format!",
-                    "Validation Error", JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Invalid date/time format!");
         }
     }
 
+    private void checkAvailability() {
+        try {
+            Long staffId = extractIdFromComboBox(doctorComboBox);
+            String location = (String) locationComboBox.getSelectedItem();
+            LocalDateTime appointmentTime = parseDateTime();
+
+            if (staffId == null || location.equals("Select Location")) {
+                showWarningDialog("Please select doctor and location first!");
+                return;
+            }
+
+            boolean available = appointmentService.checkAvailability(staffId, location, appointmentTime);
+
+            String message = available ? "Time slot is AVAILABLE" : "Time slot is NOT AVAILABLE";
+
+            if (available) {
+                showSuccessDialog(message);
+            } else {
+                showWarningDialog(message);
+            }
+
+            addNotification("🔍 Availability checked for " + appointmentTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) + " - "
+                    + (available ? "Available" : "Unavailable"));
+
+        } catch (Exception e) {
+            showErrorDialog("Error checking availability: " + e.getMessage());
+        }
+    }
+
+    // Enhanced reschedule dialog
     private void rescheduleAppointment() {
         int selectedRow = appointmentTable.getSelectedRow();
         if (selectedRow == -1) {
@@ -435,31 +663,30 @@ public class AppointmentPanel extends JPanel {
         int modelRow = appointmentTable.convertRowIndexToModel(selectedRow);
         Long appointmentId = (Long) tableModel.getValueAt(modelRow, 0);
 
-        // Create reschedule dialog
-        JDialog rescheduleDialog = new JDialog(parentFrame, "Reschedule Appointment", true);
-        rescheduleDialog.setSize(400, 300);
-        rescheduleDialog.setLocationRelativeTo(this);
-
+        JDialog rescheduleDialog = createStyledDialog("Reschedule Appointment", 450, 300);
         JPanel content = new JPanel(new GridBagLayout());
-        content.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        content.setBackground(CARD_COLOR);
+        content.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(8, 8, 8, 8);
         gbc.anchor = GridBagConstraints.WEST;
 
         JDateChooser newDateChooser = new JDateChooser();
         newDateChooser.setDateFormatString("yyyy-MM-dd");
         newDateChooser.setDate(java.sql.Date.valueOf(LocalDate.now()));
-        
+        newDateChooser.setFont(DATA_FONT);
+        newDateChooser.setPreferredSize(new Dimension(150, 32));
+
         SpinnerDateModel newTimeModel = new SpinnerDateModel();
         JSpinner newTimeSpinner = new JSpinner(newTimeModel);
         JSpinner.DateEditor newTimeEditor = new JSpinner.DateEditor(newTimeSpinner, "HH:mm");
         newTimeSpinner.setEditor(newTimeEditor);
         newTimeSpinner.setValue(new java.util.Date());
-        
-        JComboBox<String> newLocationCombo = new JComboBox<>();
+        newTimeSpinner.setFont(DATA_FONT);
+        newTimeSpinner.setPreferredSize(new Dimension(80, 32));
 
-        // Populate location combo
+        JComboBox<String> newLocationCombo = createStyledComboBox();
         for (String room : appointmentService.getAvailableRooms()) {
             newLocationCombo.addItem(room);
         }
@@ -467,19 +694,19 @@ public class AppointmentPanel extends JPanel {
         // Layout reschedule form
         gbc.gridx = 0;
         gbc.gridy = 0;
-        content.add(new JLabel("New Date:"), gbc);
+        content.add(createLabel("New Date:"), gbc);
         gbc.gridx = 1;
         content.add(newDateChooser, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 1;
-        content.add(new JLabel("New Time:"), gbc);
+        content.add(createLabel("New Time:"), gbc);
         gbc.gridx = 1;
         content.add(newTimeSpinner, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 2;
-        content.add(new JLabel("New Location:"), gbc);
+        content.add(createLabel("New Location:"), gbc);
         gbc.gridx = 1;
         content.add(newLocationCombo, gbc);
 
@@ -487,24 +714,24 @@ public class AppointmentPanel extends JPanel {
         gbc.gridx = 0;
         gbc.gridy = 3;
         gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        JPanel buttons = new JPanel(new FlowLayout());
-        JButton confirmBtn = new JButton("Confirm Reschedule");
-        JButton cancelBtn = new JButton("Cancel");
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 16));
+        buttons.setBackground(CARD_COLOR);
+
+        JButton confirmBtn = createStyledButton("Confirm Reschedule", ACCENT_COLOR, "");
+        JButton cancelBtn = createStyledButton("Cancel", new Color(128, 128, 128), "");
 
         confirmBtn.addActionListener(e -> {
             try {
                 java.util.Date selectedDate = newDateChooser.getDate();
                 java.util.Date selectedTime = (java.util.Date) newTimeSpinner.getValue();
-                
+
                 if (selectedDate == null || selectedTime == null) {
-                    JOptionPane.showMessageDialog(rescheduleDialog,
-                            "Please select both date and time!",
-                            "Validation Error", JOptionPane.WARNING_MESSAGE);
+                    showWarningDialog("Please select both date and time!");
                     return;
                 }
-                
+
                 LocalDate date = new java.sql.Date(selectedDate.getTime()).toLocalDate();
                 LocalDateTime newDateTime = LocalDateTime.of(
                         date,
@@ -518,15 +745,12 @@ public class AppointmentPanel extends JPanel {
                             + newDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
                     refreshData();
                     rescheduleDialog.dispose();
+                    showSuccessDialog("Appointment rescheduled successfully!");
                 } else {
-                    JOptionPane.showMessageDialog(rescheduleDialog,
-                            "Failed to reschedule appointment!",
-                            "Error", JOptionPane.ERROR_MESSAGE);
+                    showErrorDialog("Failed to reschedule appointment!");
                 }
             } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(rescheduleDialog,
-                        "Invalid date/time format!",
-                        "Validation Error", JOptionPane.ERROR_MESSAGE);
+                showErrorDialog("Invalid date/time format!");
             }
         });
 
@@ -552,83 +776,304 @@ public class AppointmentPanel extends JPanel {
         String dateTime = (String) tableModel.getValueAt(modelRow, 3);
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Cancel appointment for " + patientInfo + " on " + dateTime + "?",
+                "❌ Cancel appointment for " + patientInfo + " on " + dateTime + "?",
                 "Confirm Cancellation",
-                JOptionPane.YES_NO_OPTION);
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
             boolean success = appointmentService.cancelAppointment(appointmentId);
             if (success) {
                 addNotification("❌ Appointment " + appointmentId + " cancelled for " + patientInfo);
                 refreshData();
+                showSuccessDialog("Appointment cancelled successfully!");
             } else {
-                JOptionPane.showMessageDialog(this,
-                        "Failed to cancel appointment!",
-                        "Error", JOptionPane.ERROR_MESSAGE);
+                showErrorDialog("Failed to cancel appointment!");
             }
         }
     }
 
-    private void checkAvailability() {
+    private JDialog createStyledDialog(String title, int width, int height) {
+        JDialog dialog = new JDialog(parentFrame, title, true);
+        dialog.setSize(width, height);
+        dialog.setLocationRelativeTo(this);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+        return dialog;
+    }
+
+    // Emergency appointment dialog
+    private void scheduleEmergencyAppointment() {
+        JDialog emergencyDialog = createStyledDialog("🚨 Emergency Appointment", 400, 280);
+
+        JPanel content = new JPanel(new GridBagLayout());
+        content.setBackground(CARD_COLOR);
+        content.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ERROR_COLOR, 2),
+                BorderFactory.createEmptyBorder(24, 24, 24, 24)
+        ));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        JComboBox<String> emergencyPatientCombo = createStyledComboBox();
+        JComboBox<String> emergencyDoctorCombo = createStyledComboBox();
+
         try {
-            Long staffId = extractIdFromComboBox(doctorComboBox);
-            String location = (String) locationComboBox.getSelectedItem();
-            LocalDateTime appointmentTime = parseDateTime();
-
-            if (staffId == null || location.equals("Select Location")) {
-                JOptionPane.showMessageDialog(this, "Please select doctor and location first!",
-                        "Validation Error", JOptionPane.WARNING_MESSAGE);
-                return;
+            List<Patient> patients = patientDAO.getAllPatients();
+            for (Patient p : patients) {
+                emergencyPatientCombo.addItem(p.getId() + " - " + p.getName());
             }
 
-            boolean available = appointmentService.checkAvailability(staffId, location, appointmentTime);
-
-            String message = available
-                    ? "✅ Time slot is AVAILABLE"
-                    : "❌ Time slot is NOT AVAILABLE";
-
-            JOptionPane.showMessageDialog(this, message,
-                    "Availability Check",
-                    available ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
-
-            addNotification("🔍 Availability checked for " + appointmentTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) + " - "
-                    + (available ? "Available" : "Unavailable"));
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error checking availability: " + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            List<Staff> doctors = staffDAO.getAllStaff();
+            for (Staff s : doctors) {
+                emergencyDoctorCombo.addItem(s.getId() + " - " + s.getName());
+            }
+        } catch (SQLException e) {
+            showErrorDialog("Error loading data: " + e.getMessage());
         }
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        content.add(createLabel("Patient:"), gbc);
+        gbc.gridx = 1;
+        content.add(emergencyPatientCombo, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        content.add(createLabel("Available Doctor:"), gbc);
+        gbc.gridx = 1;
+        content.add(emergencyDoctorCombo, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 16));
+        buttons.setBackground(CARD_COLOR);
+
+        JButton scheduleEmergencyBtn = createStyledButton("Schedule Emergency", ERROR_COLOR, "emergency");
+        JButton cancelEmergencyBtn = createStyledButton("Cancel", new Color(128, 128, 128), "");
+
+        scheduleEmergencyBtn.addActionListener(e -> {
+            Long patientId = extractIdFromComboBox(emergencyPatientCombo);
+            Long doctorId = extractIdFromComboBox(emergencyDoctorCombo);
+
+            if (patientId != null && doctorId != null) {
+                LocalDateTime emergencyTime = LocalDateTime.now().plusMinutes(15);
+                boolean success = appointmentService.scheduleAppointment(patientId, doctorId, emergencyTime, "Emergency Room");
+
+                if (success) {
+                    addNotification("🚨 Emergency appointment scheduled for "
+                            + emergencyTime.format(DateTimeFormatter.ofPattern("HH:mm")));
+                    refreshData();
+                    emergencyDialog.dispose();
+                    showSuccessDialog("Emergency appointment scheduled successfully!");
+                } else {
+                    showErrorDialog("Failed to schedule emergency appointment!");
+                }
+            }
+        });
+
+        cancelEmergencyBtn.addActionListener(e -> emergencyDialog.dispose());
+
+        buttons.add(scheduleEmergencyBtn);
+        buttons.add(cancelEmergencyBtn);
+        content.add(buttons, gbc);
+
+        emergencyDialog.add(content);
+        emergencyDialog.setVisible(true);
     }
 
+    private void showTodaysAppointments() {
+        SwingWorker<List<Appointment>, Void> worker = new SwingWorker<List<Appointment>, Void>() {
+            @Override
+            protected List<Appointment> doInBackground() throws Exception {
+                return appointmentDAO.getAllAppointments();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<Appointment> allAppointments = get();
+                    List<Appointment> todayAppointments = allAppointments.stream()
+                            .filter(apt -> apt.getAppointmentTime().toLocalDate().equals(LocalDate.now()))
+                            .sorted((a1, a2) -> a1.getAppointmentTime().compareTo(a2.getAppointmentTime()))
+                            .toList();
+
+                    showTodaysAppointmentsDialog(todayAppointments);
+                } catch (Exception e) {
+                    showErrorDialog("Error loading today's appointments: " + e.getMessage());
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void showTodaysAppointmentsDialog(List<Appointment> todayAppointments) {
+        JDialog dialog = createStyledDialog("📅 Today's Appointments - " + LocalDate.now(), 700, 500);
+
+        JPanel mainPanel = new JPanel(new BorderLayout(16, 16));
+        mainPanel.setBackground(BACKGROUND_COLOR);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+        // Header with count
+        JLabel headerLabel = new JLabel("📋 " + todayAppointments.size() + " appointments scheduled for today");
+        headerLabel.setFont(HEADER_FONT);
+        headerLabel.setForeground(PRIMARY_COLOR);
+        mainPanel.add(headerLabel, BorderLayout.NORTH);
+
+        String[] columns = {"Time", "Patient", "Doctor", "Location", "Status"};
+        DefaultTableModel todayModel = new DefaultTableModel(columns, 0);
+        JTable todayTable = new JTable(todayModel);
+
+        // Style the today's table
+        todayTable.setRowHeight(32);
+        todayTable.setFont(DATA_FONT);
+        todayTable.setBackground(SECONDARY_COLOR);
+        todayTable.setGridColor(BORDER_COLOR);
+
+        JTableHeader header = todayTable.getTableHeader();
+        header.setFont(LABEL_FONT);
+        header.setBackground(PRIMARY_COLOR);
+        header.setForeground(SECONDARY_COLOR);
+
+        SwingWorker<Void, Void> dataLoader = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    List<Patient> allPatients = patientDAO.getAllPatients();
+                    List<Staff> allStaff = staffDAO.getAllStaff();
+
+                    java.util.Map<Long, Patient> patientMap = new java.util.HashMap<>();
+                    java.util.Map<Long, Staff> staffMap = new java.util.HashMap<>();
+
+                    for (Patient patient : allPatients) {
+                        patientMap.put(patient.getId(), patient);
+                    }
+                    for (Staff staff : allStaff) {
+                        staffMap.put(staff.getId(), staff);
+                    }
+
+                    for (Appointment apt : todayAppointments) {
+                        Patient patient = patientMap.get(apt.getPatientId());
+                        Staff staff = staffMap.get(apt.getStaffId());
+
+                        Object[] row = {
+                            apt.getAppointmentTime().format(DateTimeFormatter.ofPattern("HH:mm")),
+                            patient != null ? patient.getName() : "Unknown",
+                            staff != null ? staff.getName() : "Unknown",
+                            apt.getLocation(),
+                            apt.getStatus()
+                        };
+
+                        SwingUtilities.invokeLater(() -> todayModel.addRow(row));
+                    }
+                } catch (SQLException e) {
+                    SwingUtilities.invokeLater(() -> {
+                        showErrorDialog("Error loading appointment details: " + e.getMessage());
+                    });
+                }
+                return null;
+            }
+        };
+        dataLoader.execute();
+
+        JScrollPane scrollPane = new JScrollPane(todayTable);
+        scrollPane.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 16));
+        buttonPanel.setBackground(BACKGROUND_COLOR);
+
+        JButton closeBtn = createStyledButton("Close", PRIMARY_COLOR, "");
+        closeBtn.addActionListener(e -> dialog.dispose());
+        buttonPanel.add(closeBtn);
+
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
+    }
+
+    private void demonstratePatterns() {
+        StringBuilder demo = new StringBuilder();
+        demo.append("🎯 APPOINTMENT SYSTEM PATTERNS DEMO\n\n");
+        demo.append("MEDIATOR PATTERN:\n");
+        demo.append("• AppointmentMediator coordinates between Patient, Doctor, and Room components\n");
+        demo.append("• Centralizes communication logic\n");
+        demo.append("• Reduces coupling between components\n\n");
+
+        demo.append("OBSERVER PATTERN:\n");
+        demo.append("• PatientObserver receives appointment notifications\n");
+        demo.append("• DoctorObserver gets schedule updates\n");
+        demo.append("• AdminObserver monitors all appointment activities\n\n");
+
+        demo.append("PATTERN INTERACTION:\n");
+        demo.append("• When appointment is scheduled:\n");
+        demo.append("  1. Mediator validates availability\n");
+        demo.append("  2. Creates appointment\n");
+        demo.append("  3. Notifies all observers\n");
+        demo.append("  4. Updates GUI notifications\n\n");
+
+        demo.append("BENEFITS:\n");
+        demo.append("• Loose coupling between components\n");
+        demo.append("• Real-time notifications\n");
+        demo.append("• Extensible notification system\n");
+        demo.append("• Centralized appointment logic\n");
+
+        JDialog demoDialog = createStyledDialog("📖 Design Patterns Demo", 600, 500);
+
+        JPanel mainPanel = new JPanel(new BorderLayout(16, 16));
+        mainPanel.setBackground(BACKGROUND_COLOR);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+        JTextArea demoArea = new JTextArea(demo.toString());
+        demoArea.setEditable(false);
+        demoArea.setFont(new Font("Consolas", Font.PLAIN, 12));
+        demoArea.setBackground(CARD_COLOR);
+        demoArea.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+        JScrollPane scrollPane = new JScrollPane(demoArea);
+        scrollPane.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 16));
+        buttonPanel.setBackground(BACKGROUND_COLOR);
+
+        JButton closeBtn = createStyledButton("Close", PRIMARY_COLOR, "");
+        closeBtn.addActionListener(e -> demoDialog.dispose());
+        buttonPanel.add(closeBtn);
+
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+        demoDialog.add(mainPanel);
+        demoDialog.setVisible(true);
+
+        addNotification("📖 Design patterns demonstration viewed");
+    }
+
+    // Utility methods
     private boolean validateAppointmentForm() {
         if (patientComboBox.getSelectedIndex() <= 0) {
-            JOptionPane.showMessageDialog(this, "Please select a patient!",
-                    "Validation Error", JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Please select a patient!");
             return false;
         }
-
         if (doctorComboBox.getSelectedIndex() <= 0) {
-            JOptionPane.showMessageDialog(this, "Please select a doctor!",
-                    "Validation Error", JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Please select a doctor!");
             return false;
         }
-
         if (locationComboBox.getSelectedIndex() <= 0) {
-            JOptionPane.showMessageDialog(this, "Please select a location!",
-                    "Validation Error", JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Please select a location!");
             return false;
         }
-
         try {
             parseDateTime();
             return true;
         } catch (DateTimeParseException e) {
-            JOptionPane.showMessageDialog(this, "Invalid date/time format!\nDate: YYYY-MM-DD, Time: HH:MM",
-                    "Validation Error", JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Invalid date/time format!\nDate: YYYY-MM-DD, Time: HH:MM");
             return false;
         }
     }
-
 
     private LocalDateTime parseDateTime() throws DateTimeParseException {
         java.util.Date selectedDate = dateChooser.getDate();
@@ -651,7 +1096,6 @@ public class AppointmentPanel extends JPanel {
         if (selected == null || selected.startsWith("Select")) {
             return null;
         }
-
         try {
             return Long.parseLong(selected.split(" - ")[0]);
         } catch (Exception e) {
@@ -671,50 +1115,43 @@ public class AppointmentPanel extends JPanel {
                 try {
                     List<Appointment> appointments = get();
                     updateTableData(appointments);
-                    parentFrame.setStatus("Appointments refreshed - " + appointments.size() + " appointments loaded");
+                    if (parentFrame != null) {
+                        parentFrame.setStatus("✅ Appointments refreshed - " + appointments.size() + " appointments loaded");
+                    }
                 } catch (Exception e) {
-                    JOptionPane.showMessageDialog(AppointmentPanel.this,
-                            "Error loading appointments: " + e.getMessage(),
-                            "Database Error", JOptionPane.ERROR_MESSAGE);
-                    parentFrame.setStatus("Error loading appointments");
+                    showErrorDialog("Error loading appointments: " + e.getMessage());
+                    if (parentFrame != null) {
+                        parentFrame.setStatus("❌ Error loading appointments");
+                    }
                 }
             }
         };
-
         worker.execute();
     }
 
-    // FIXED METHOD - Uses single database operation instead of multiple SwingWorkers
     private void updateTableData(List<Appointment> appointments) {
-        // Clear the table first
         tableModel.setRowCount(0);
-
         if (appointments == null || appointments.isEmpty()) {
             return;
         }
 
-        // Load all patient and staff data in a single operation to avoid multiple database calls
         SwingWorker<Void, Void> dataLoader = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
                 try {
-                    // Pre-load all patients and staff to avoid multiple database calls
                     List<Patient> allPatients = patientDAO.getAllPatients();
                     List<Staff> allStaff = staffDAO.getAllStaff();
 
-                    // Create maps for quick lookup
                     java.util.Map<Long, Patient> patientMap = new java.util.HashMap<>();
                     java.util.Map<Long, Staff> staffMap = new java.util.HashMap<>();
 
                     for (Patient patient : allPatients) {
                         patientMap.put(patient.getId(), patient);
                     }
-
                     for (Staff staff : allStaff) {
                         staffMap.put(staff.getId(), staff);
                     }
 
-                    // Process all appointments with the loaded data
                     for (Appointment appointment : appointments) {
                         Patient patient = patientMap.get(appointment.getPatientId());
                         Staff staff = staffMap.get(appointment.getStaffId());
@@ -728,256 +1165,18 @@ public class AppointmentPanel extends JPanel {
                             appointment.getStatus()
                         };
 
-                        // Add row to table model on EDT
                         SwingUtilities.invokeLater(() -> tableModel.addRow(row));
                     }
 
                 } catch (SQLException e) {
                     SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(AppointmentPanel.this,
-                                "Error loading appointment details: " + e.getMessage(),
-                                "Database Error", JOptionPane.ERROR_MESSAGE);
+                        showErrorDialog("Error loading appointment details: " + e.getMessage());
                     });
                 }
                 return null;
             }
         };
-
         dataLoader.execute();
-    }
-
-    private void showTodaysAppointments() {
-        SwingWorker<List<Appointment>, Void> worker = new SwingWorker<List<Appointment>, Void>() {
-            @Override
-            protected List<Appointment> doInBackground() throws Exception {
-                return appointmentDAO.getAllAppointments();
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    List<Appointment> allAppointments = get();
-                    List<Appointment> todayAppointments = allAppointments.stream()
-                            .filter(apt -> apt.getAppointmentTime().toLocalDate().equals(LocalDate.now()))
-                            .sorted((a1, a2) -> a1.getAppointmentTime().compareTo(a2.getAppointmentTime()))
-                            .toList();
-
-                    showTodaysAppointmentsDialog(todayAppointments);
-                } catch (Exception e) {
-                    JOptionPane.showMessageDialog(AppointmentPanel.this,
-                            "Error loading today's appointments: " + e.getMessage(),
-                            "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        };
-
-        worker.execute();
-    }
-
-    // FIXED METHOD - Uses single database operation instead of multiple SwingWorkers
-    private void showTodaysAppointmentsDialog(List<Appointment> todayAppointments) {
-        JDialog dialog = new JDialog(parentFrame, "Today's Appointments - " + LocalDate.now(), true);
-        dialog.setSize(700, 500);
-        dialog.setLocationRelativeTo(this);
-
-        String[] columns = {"Time", "Patient", "Doctor", "Location", "Status"};
-        DefaultTableModel todayModel = new DefaultTableModel(columns, 0);
-        JTable todayTable = new JTable(todayModel);
-
-        // Load all patient and staff data once
-        SwingWorker<Void, Void> dataLoader = new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                try {
-                    // Pre-load all patients and staff
-                    List<Patient> allPatients = patientDAO.getAllPatients();
-                    List<Staff> allStaff = staffDAO.getAllStaff();
-
-                    // Create maps for quick lookup
-                    java.util.Map<Long, Patient> patientMap = new java.util.HashMap<>();
-                    java.util.Map<Long, Staff> staffMap = new java.util.HashMap<>();
-
-                    for (Patient patient : allPatients) {
-                        patientMap.put(patient.getId(), patient);
-                    }
-
-                    for (Staff staff : allStaff) {
-                        staffMap.put(staff.getId(), staff);
-                    }
-
-                    // Process all today's appointments
-                    for (Appointment apt : todayAppointments) {
-                        Patient patient = patientMap.get(apt.getPatientId());
-                        Staff staff = staffMap.get(apt.getStaffId());
-
-                        Object[] row = {
-                            apt.getAppointmentTime().format(DateTimeFormatter.ofPattern("HH:mm")),
-                            patient != null ? patient.getName() : "Unknown",
-                            staff != null ? staff.getName() : "Unknown",
-                            apt.getLocation(),
-                            apt.getStatus()
-                        };
-
-                        // Add row on EDT
-                        SwingUtilities.invokeLater(() -> todayModel.addRow(row));
-                    }
-
-                } catch (SQLException e) {
-                    SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(dialog,
-                                "Error loading appointment details: " + e.getMessage(),
-                                "Database Error", JOptionPane.ERROR_MESSAGE);
-                    });
-                }
-                return null;
-            }
-        };
-
-        dataLoader.execute();
-
-        JScrollPane scrollPane = new JScrollPane(todayTable);
-        dialog.add(scrollPane, BorderLayout.CENTER);
-
-        JPanel buttonPanel = new JPanel();
-        JButton closeBtn = new JButton("Close");
-        closeBtn.addActionListener(e -> dialog.dispose());
-        buttonPanel.add(closeBtn);
-
-        dialog.add(buttonPanel, BorderLayout.SOUTH);
-        dialog.setVisible(true);
-    }
-
-    private void scheduleEmergencyAppointment() {
-        JDialog emergencyDialog = new JDialog(parentFrame, "Emergency Appointment", true);
-        emergencyDialog.setSize(400, 250);
-        emergencyDialog.setLocationRelativeTo(this);
-
-        JPanel content = new JPanel(new GridBagLayout());
-        content.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.anchor = GridBagConstraints.WEST;
-
-        JComboBox<String> emergencyPatientCombo = new JComboBox<>();
-        JComboBox<String> emergencyDoctorCombo = new JComboBox<>();
-
-        // Populate combos (simplified for emergency)
-        try {
-            List<Patient> patients = patientDAO.getAllPatients();
-            for (Patient p : patients) {
-                emergencyPatientCombo.addItem(p.getId() + " - " + p.getName());
-            }
-
-            List<Staff> doctors = staffDAO.getAllStaff();
-            for (Staff s : doctors) {
-                emergencyDoctorCombo.addItem(s.getId() + " - " + s.getName());
-            }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(emergencyDialog, "Error loading data: " + e.getMessage());
-        }
-
-        // Layout
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        content.add(new JLabel("Patient:"), gbc);
-        gbc.gridx = 1;
-        content.add(emergencyPatientCombo, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        content.add(new JLabel("Available Doctor:"), gbc);
-        gbc.gridx = 1;
-        content.add(emergencyDoctorCombo, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-
-        JPanel buttons = new JPanel();
-        JButton scheduleEmergencyBtn = new JButton("Schedule Emergency");
-        JButton cancelEmergencyBtn = new JButton("Cancel");
-
-        scheduleEmergencyBtn.addActionListener(e -> {
-            Long patientId = extractIdFromComboBox(emergencyPatientCombo);
-            Long doctorId = extractIdFromComboBox(emergencyDoctorCombo);
-
-            if (patientId != null && doctorId != null) {
-                // Schedule for next available slot (in 15 minutes)
-                LocalDateTime emergencyTime = LocalDateTime.now().plusMinutes(15);
-                boolean success = appointmentService.scheduleAppointment(patientId, doctorId, emergencyTime, "Emergency Room");
-
-                if (success) {
-                    addNotification("🚨 Emergency appointment scheduled for "
-                            + emergencyTime.format(DateTimeFormatter.ofPattern("HH:mm")));
-                    refreshData();
-                    emergencyDialog.dispose();
-                } else {
-                    JOptionPane.showMessageDialog(emergencyDialog,
-                            "Failed to schedule emergency appointment!",
-                            "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-
-        cancelEmergencyBtn.addActionListener(e -> emergencyDialog.dispose());
-
-        buttons.add(scheduleEmergencyBtn);
-        buttons.add(cancelEmergencyBtn);
-        content.add(buttons, gbc);
-
-        emergencyDialog.add(content);
-        emergencyDialog.setVisible(true);
-    }
-
-    private void demonstratePatterns() {
-        StringBuilder demo = new StringBuilder();
-        demo.append("=== APPOINTMENT SYSTEM PATTERNS DEMO ===\n\n");
-        demo.append("🎯 MEDIATOR PATTERN:\n");
-        demo.append("• AppointmentMediator coordinates between Patient, Doctor, and Room components\n");
-        demo.append("• Centralizes communication logic\n");
-        demo.append("• Reduces coupling between components\n\n");
-
-        demo.append("👀 OBSERVER PATTERN:\n");
-        demo.append("• PatientObserver receives appointment notifications\n");
-        demo.append("• DoctorObserver gets schedule updates\n");
-        demo.append("• AdminObserver monitors all appointment activities\n\n");
-
-        demo.append("🔄 PATTERN INTERACTION:\n");
-        demo.append("• When appointment is scheduled:\n");
-        demo.append("  1. Mediator validates availability\n");
-        demo.append("  2. Creates appointment\n");
-        demo.append("  3. Notifies all observers\n");
-        demo.append("  4. Updates GUI notifications\n\n");
-
-        demo.append("📈 BENEFITS:\n");
-        demo.append("• Loose coupling between components\n");
-        demo.append("• Real-time notifications\n");
-        demo.append("• Extensible notification system\n");
-        demo.append("• Centralized appointment logic\n");
-
-        JDialog demoDialog = new JDialog(parentFrame, "Design Patterns Demo", true);
-        demoDialog.setSize(600, 500);
-        demoDialog.setLocationRelativeTo(this);
-
-        JTextArea demoArea = new JTextArea(demo.toString());
-        demoArea.setEditable(false);
-        demoArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-
-        JScrollPane scrollPane = new JScrollPane(demoArea);
-        demoDialog.add(scrollPane, BorderLayout.CENTER);
-
-        JPanel buttonPanel = new JPanel();
-        JButton closeBtn = new JButton("Close");
-        closeBtn.addActionListener(e -> demoDialog.dispose());
-        buttonPanel.add(closeBtn);
-
-        demoDialog.add(buttonPanel, BorderLayout.SOUTH);
-        demoDialog.setVisible(true);
-
-        // Add to notifications
-        addNotification("📖 Design patterns demonstration viewed");
     }
 
     private void addNotification(String message) {
@@ -999,29 +1198,14 @@ public class AppointmentPanel extends JPanel {
         timeSpinner.setValue(new java.util.Date());
     }
 
-    /**
-     * Cleanup method to properly close database connections
-     */
     public void cleanup() {
         try {
-            // Close any open database connections
-            if (appointmentDAO != null) {
-                // Add cleanup logic if needed
-            }
-            if (patientDAO != null) {
-                // Add cleanup logic if needed
-            }
-            if (staffDAO != null) {
-                // Add cleanup logic if needed
-            }
+            // Close database connections if needed
         } catch (Exception e) {
             System.err.println("Error during cleanup: " + e.getMessage());
         }
     }
 
-    /**
-     * Override dispose to ensure cleanup
-     */
     @Override
     public void removeNotify() {
         cleanup();

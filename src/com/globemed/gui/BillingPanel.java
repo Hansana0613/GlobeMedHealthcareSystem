@@ -44,6 +44,14 @@ public class BillingPanel extends JPanel {
     private JTextField itemCostField;
     private JComboBox<String> itemTypeCombo;
 
+    // Appointment search components
+    private JTextField appointmentSearchField;
+    private JButton searchAppointmentButton;
+    private JTable appointmentSearchResultsTable;
+    private DefaultTableModel appointmentSearchModel;
+    private JLabel selectedAppointmentLabel;
+    private Long selectedAppointmentId;
+
     // Claim processing components
     private JComboBox<String> claimTypeCombo;
     private JTextField insuranceProviderField;
@@ -94,6 +102,20 @@ public class BillingPanel extends JPanel {
         itemDescriptionField = new JTextField(20);
         itemCostField = new JTextField(10);
         itemTypeCombo = new JComboBox<>(new String[]{"CONSULTATION", "TREATMENT", "MEDICATION", "DIAGNOSTIC", "TAX", "DISCOUNT", "LATE_FEE"});
+
+        // Initialize appointment search components
+        appointmentSearchField = new JTextField(20);
+        searchAppointmentButton = new JButton("Search Appointment");
+        appointmentSearchResultsTable = new JTable();
+        appointmentSearchModel = new DefaultTableModel(new String[]{"ID", "Patient Name", "Date", "Time", "Status"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        appointmentSearchResultsTable.setModel(appointmentSearchModel);
+        selectedAppointmentLabel = new JLabel("No appointment selected.");
+        selectedAppointmentId = null;
 
         // Initialize claim processing components
         claimTypeCombo = new JComboBox<>(new String[]{"INSURANCE", "DIRECT_PAY", "PARTIAL_INSURANCE"});
@@ -303,9 +325,24 @@ public class BillingPanel extends JPanel {
         gbc.gridx = 1;
         formPanel.add(insuranceField, gbc);
 
-        // Buttons
+        // Appointment Search
         gbc.gridx = 0;
         gbc.gridy = 2;
+        formPanel.add(new JLabel("Search Appointment:"), gbc);
+        gbc.gridx = 1;
+        formPanel.add(appointmentSearchField, gbc);
+        gbc.gridx = 2;
+        formPanel.add(searchAppointmentButton, gbc);
+
+        // Selected Appointment Info
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 3;
+        formPanel.add(selectedAppointmentLabel, gbc);
+
+        // Buttons
+        gbc.gridx = 0;
+        gbc.gridy = 4;
         gbc.gridwidth = 2;
         JPanel buttonPanel = new JPanel(new FlowLayout());
         JButton createBillButton = new JButton("Create Bill");
@@ -315,6 +352,26 @@ public class BillingPanel extends JPanel {
         formPanel.add(buttonPanel, gbc);
 
         panel.add(formPanel, BorderLayout.NORTH);
+
+        // Appointment search results panel
+        JPanel searchResultsPanel = new JPanel(new BorderLayout());
+        searchResultsPanel.setBorder(BorderFactory.createTitledBorder("Appointment Search Results"));
+        
+        // Configure the appointment search results table
+        appointmentSearchResultsTable.setRowHeight(25);
+        appointmentSearchResultsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        JScrollPane searchResultsScroll = new JScrollPane(appointmentSearchResultsTable);
+        searchResultsScroll.setPreferredSize(new Dimension(500, 200));
+        searchResultsPanel.add(searchResultsScroll, BorderLayout.CENTER);
+        
+        // Add selection info
+        JPanel selectionInfoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        selectionInfoPanel.add(new JLabel("Selected Appointment: "));
+        selectionInfoPanel.add(selectedAppointmentLabel);
+        searchResultsPanel.add(selectionInfoPanel, BorderLayout.SOUTH);
+        
+        panel.add(searchResultsPanel, BorderLayout.CENTER);
 
         // Bill items management
         JPanel itemsPanel = new JPanel(new BorderLayout());
@@ -353,12 +410,23 @@ public class BillingPanel extends JPanel {
         itemFormPanel.add(addItemButton, gbc);
 
         itemsPanel.add(itemFormPanel, BorderLayout.CENTER);
-        panel.add(itemsPanel, BorderLayout.CENTER);
+        panel.add(itemsPanel, BorderLayout.SOUTH);
 
         // Event handlers for bill creation
         createBillButton.addActionListener(e -> createNewBill());
         clearFormButton.addActionListener(e -> clearBillForm());
         addItemButton.addActionListener(e -> addItemToBill());
+
+        // Event handlers for appointment search
+        searchAppointmentButton.addActionListener(e -> searchAppointments());
+        appointmentSearchField.addActionListener(e -> searchAppointments());
+        
+        // Selection handler for appointment table
+        appointmentSearchResultsTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                selectAppointment();
+            }
+        });
 
         return panel;
     }
@@ -632,7 +700,15 @@ public class BillingPanel extends JPanel {
 
     private void createNewBill() {
         try {
-            Long appointmentId = ((Number) appointmentIdSpinner.getValue()).longValue();
+            Long appointmentId;
+            
+            // Use selected appointment ID if available, otherwise use spinner value
+            if (selectedAppointmentId != null) {
+                appointmentId = selectedAppointmentId;
+            } else {
+                appointmentId = ((Number) appointmentIdSpinner.getValue()).longValue();
+            }
+            
             String insurance = insuranceField.getText().trim();
 
             if (insurance.isEmpty()) {
@@ -679,6 +755,12 @@ public class BillingPanel extends JPanel {
         itemDescriptionField.setText("");
         itemCostField.setText("");
         itemTypeCombo.setSelectedIndex(0);
+        
+        // Clear appointment search
+        appointmentSearchField.setText("");
+        appointmentSearchModel.setRowCount(0);
+        selectedAppointmentLabel.setText("No appointment selected.");
+        selectedAppointmentId = null;
     }
 
     private void addItemToBill() {
@@ -958,6 +1040,80 @@ public class BillingPanel extends JPanel {
                     "Error refreshing all bill data: " + e.getMessage(),
                     "Refresh Error",
                     JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * Search for appointments based on the search criteria
+     */
+    private void searchAppointments() {
+        String searchText = appointmentSearchField.getText().trim();
+        
+        if (searchText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter an appointment ID to search.", "Empty Search", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        try {
+            appointmentSearchModel.setRowCount(0);
+            
+            // Try to parse as appointment ID first
+            try {
+                Long appointmentId = Long.parseLong(searchText);
+                com.globemed.database.AppointmentDAO appointmentDAO = new com.globemed.database.AppointmentDAO();
+                com.globemed.database.PatientDAO patientDAO = new com.globemed.database.PatientDAO();
+                com.globemed.database.StaffDAO staffDAO = new com.globemed.database.StaffDAO();
+                
+                com.globemed.models.Appointment appointment = appointmentDAO.getAppointmentById(appointmentId);
+                
+                if (appointment != null) {
+                    // Get patient and staff details
+                    com.globemed.models.Patient patient = patientDAO.getPatientById(appointment.getPatientId());
+                    com.globemed.models.Staff staff = staffDAO.getStaffById(appointment.getStaffId());
+                    
+                    String patientName = patient != null ? patient.getName() : "Unknown Patient";
+                    String doctorName = staff != null ? staff.getName() : "Unknown Doctor";
+                    
+                    Object[] row = {
+                        appointment.getId(),
+                        patientName,
+                        appointment.getAppointmentTime().toLocalDate().toString(),
+                        appointment.getAppointmentTime().toLocalTime().toString(),
+                        appointment.getStatus()
+                    };
+                    appointmentSearchModel.addRow(row);
+                } else {
+                    JOptionPane.showMessageDialog(this, "No appointment found with ID: " + appointmentId, "No Results", JOptionPane.INFORMATION_MESSAGE);
+                }
+                
+            } catch (NumberFormatException e) {
+                // If not a number, search by patient name or other criteria
+                JOptionPane.showMessageDialog(this, "Please enter a valid appointment ID (number).", "Invalid Search", JOptionPane.WARNING_MESSAGE);
+            }
+            
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Error searching appointments: " + e.getMessage(),
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * Handle appointment selection from the search results
+     */
+    private void selectAppointment() {
+        int selectedRow = appointmentSearchResultsTable.getSelectedRow();
+        if (selectedRow >= 0) {
+            Long appointmentId = (Long) appointmentSearchModel.getValueAt(selectedRow, 0);
+            String patientName = (String) appointmentSearchModel.getValueAt(selectedRow, 1);
+            String date = (String) appointmentSearchModel.getValueAt(selectedRow, 2);
+            String time = (String) appointmentSearchModel.getValueAt(selectedRow, 3);
+            String status = (String) appointmentSearchModel.getValueAt(selectedRow, 4);
+            
+            selectedAppointmentId = appointmentId;
+            appointmentIdSpinner.setValue(appointmentId.intValue());
+            selectedAppointmentLabel.setText("ID: " + appointmentId + " | Patient: " + patientName + " | " + date + " " + time + " | " + status);
         }
     }
 }
