@@ -105,6 +105,9 @@ public class AppointmentPanel extends JPanel {
 
         // Enhanced Buttons
         setupButtons();
+        
+        // Initialize button states
+        updateButtonStates();
 
         // Enhanced Notifications area
         setupNotificationsArea();
@@ -167,7 +170,7 @@ public class AppointmentPanel extends JPanel {
     private void setupButtons() {
         scheduleButton = createStyledButton("Schedule Appointment", ACCENT_COLOR, "schedule");
         rescheduleButton = createStyledButton("Reschedule", WARNING_COLOR, "reschedule");
-        cancelButton = createStyledButton("Cancel", ERROR_COLOR, "cancel");
+        cancelButton = createStyledButton("Update Status", ERROR_COLOR, "cancel");
         refreshButton = createStyledButton("Refresh", PRIMARY_COLOR, "refresh");
 
         rescheduleButton.setEnabled(false);
@@ -403,19 +406,22 @@ public class AppointmentPanel extends JPanel {
 
     private JPanel createQuickActionsCard() {
         JPanel card = createCard("⚡ Quick Actions");
-        card.setLayout(new GridLayout(3, 1, 8, 8));
+        card.setLayout(new GridLayout(4, 1, 8, 8));
 
         JButton todayApptBtn = createStyledButton("Today's Appointments", ACCENT_COLOR, "");
         JButton emergencySlotBtn = createStyledButton("Emergency Slot", ERROR_COLOR, "emergency");
         JButton patternDemoBtn = createStyledButton("Pattern Demo", PRIMARY_COLOR, "");
+        JButton roleDemoBtn = createStyledButton("Switch Role Demo", WARNING_COLOR, "");
 
         todayApptBtn.addActionListener(e -> showTodaysAppointments());
         emergencySlotBtn.addActionListener(e -> scheduleEmergencyAppointment());
         patternDemoBtn.addActionListener(e -> demonstratePatterns());
+        roleDemoBtn.addActionListener(e -> demonstrateRoleSwitching());
 
         card.add(todayApptBtn);
         card.add(emergencySlotBtn);
         card.add(patternDemoBtn);
+        card.add(roleDemoBtn);
 
         return card;
     }
@@ -541,15 +547,13 @@ public class AppointmentPanel extends JPanel {
     private void setupEventHandlers() {
         appointmentTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                boolean hasSelection = appointmentTable.getSelectedRow() != -1;
-                rescheduleButton.setEnabled(hasSelection);
-                cancelButton.setEnabled(hasSelection);
+                updateButtonStates();
             }
         });
 
         scheduleButton.addActionListener(e -> scheduleAppointment());
         rescheduleButton.addActionListener(e -> rescheduleAppointment());
-        cancelButton.addActionListener(e -> cancelAppointment());
+        cancelButton.addActionListener(e -> updateAppointmentStatus());
         refreshButton.addActionListener(e -> refreshData());
 
         dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now()));
@@ -764,33 +768,140 @@ public class AppointmentPanel extends JPanel {
         rescheduleDialog.setVisible(true);
     }
 
-    private void cancelAppointment() {
+    private void updateAppointmentStatus() {
         int selectedRow = appointmentTable.getSelectedRow();
         if (selectedRow == -1) {
+            showWarningDialog("Please select an appointment to update.");
             return;
         }
 
         int modelRow = appointmentTable.convertRowIndexToModel(selectedRow);
         Long appointmentId = (Long) tableModel.getValueAt(modelRow, 0);
         String patientInfo = (String) tableModel.getValueAt(modelRow, 1);
+        String currentStatus = (String) tableModel.getValueAt(modelRow, 5);
         String dateTime = (String) tableModel.getValueAt(modelRow, 3);
 
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "❌ Cancel appointment for " + patientInfo + " on " + dateTime + "?",
-                "Confirm Cancellation",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
+        // Get current user role (this should be passed from MainFrame or retrieved from session)
+        String userRole = getCurrentUserRole();
+        
+        if (userRole == null) {
+            showErrorDialog("Unable to determine user role. Please log in again.");
+            return;
+        }
 
-        if (confirm == JOptionPane.YES_OPTION) {
-            boolean success = appointmentService.cancelAppointment(appointmentId);
-            if (success) {
-                addNotification("❌ Appointment " + appointmentId + " cancelled for " + patientInfo);
-                refreshData();
-                showSuccessDialog("Appointment cancelled successfully!");
-            } else {
-                showErrorDialog("Failed to cancel appointment!");
+        // Create status update dialog based on user role
+        String[] availableStatuses = getAvailableStatusesForRole(userRole, currentStatus);
+        
+        if (availableStatuses.length == 0) {
+            showWarningDialog("No status updates available for this appointment.");
+            return;
+        }
+
+        String newStatus = (String) JOptionPane.showInputDialog(this,
+                "Update appointment status for " + patientInfo + " on " + dateTime + "\n" +
+                "Current Status: " + currentStatus + "\n" +
+                "User Role: " + userRole,
+                "Update Appointment Status",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                availableStatuses,
+                availableStatuses[0]);
+
+        if (newStatus != null && !newStatus.equals(currentStatus)) {
+            try {
+                boolean success = appointmentService.updateAppointmentStatus(appointmentId, newStatus);
+                if (success) {
+                    String action = getActionDescription(currentStatus, newStatus);
+                    addNotification(action + " Appointment " + appointmentId + " for " + patientInfo);
+                    refreshData();
+                    showSuccessDialog("Appointment status updated successfully to " + newStatus + "!");
+                } else {
+                    showErrorDialog("Failed to update appointment status!");
+                }
+            } catch (Exception e) {
+                showErrorDialog("Error updating appointment status: " + e.getMessage());
             }
         }
+    }
+
+    private String[] getAvailableStatusesForRole(String userRole, String currentStatus) {
+        if ("SCHEDULED".equals(currentStatus)) {
+            if ("DOCTOR".equals(userRole)) {
+                return new String[]{"COMPLETED", "CANCELLED"};
+            } else if ("NURSE".equals(userRole)) {
+                return new String[]{"CANCELLED"};
+            }
+        } else if ("IN_PROGRESS".equals(currentStatus)) {
+            if ("DOCTOR".equals(userRole)) {
+                return new String[]{"COMPLETED", "CANCELLED"};
+            } else if ("NURSE".equals(userRole)) {
+                return new String[]{"CANCELLED"};
+            }
+        }
+        return new String[]{};
+    }
+
+    private String getActionDescription(String oldStatus, String newStatus) {
+        switch (newStatus) {
+            case "COMPLETED":
+                return "✅ Completed";
+            case "CANCELLED":
+                return "❌ Cancelled";
+            default:
+                return "🔄 Updated";
+        }
+    }
+
+    private String currentUserRole = "DOCTOR"; // Default role for demo purposes
+
+    public void setCurrentUserRole(String role) {
+        this.currentUserRole = role;
+        updateButtonStates(); // Update button states when role changes
+    }
+
+    private String getCurrentUserRole() {
+        return currentUserRole;
+    }
+
+    private void updateButtonStates() {
+        int selectedRow = appointmentTable.getSelectedRow();
+        boolean hasSelection = selectedRow != -1;
+        
+        rescheduleButton.setEnabled(hasSelection);
+        cancelButton.setEnabled(hasSelection);
+        
+        if (hasSelection) {
+            int modelRow = appointmentTable.convertRowIndexToModel(selectedRow);
+            String currentStatus = (String) tableModel.getValueAt(modelRow, 5);
+            String userRole = getCurrentUserRole();
+            
+            // Update button text based on current status and user role
+            updateCancelButtonText(currentStatus, userRole);
+        }
+    }
+
+    private void updateCancelButtonText(String currentStatus, String userRole) {
+        if ("SCHEDULED".equals(currentStatus) || "IN_PROGRESS".equals(currentStatus)) {
+            if ("DOCTOR".equals(userRole)) {
+                cancelButton.setText("🔄 Update Status");
+                cancelButton.setToolTipText("Update appointment status (Complete/Cancel)");
+            } else if ("NURSE".equals(userRole)) {
+                cancelButton.setText("❌ Cancel Only");
+                cancelButton.setToolTipText("Cancel appointment (Nurses can only cancel)");
+            }
+        } else if ("COMPLETED".equals(currentStatus) || "CANCELLED".equals(currentStatus)) {
+            cancelButton.setText("📝 Status: " + currentStatus);
+            cancelButton.setToolTipText("Appointment is already " + currentStatus.toLowerCase());
+            cancelButton.setEnabled(false);
+        } else {
+            cancelButton.setText("🔄 Update Status");
+            cancelButton.setToolTipText("Update appointment status");
+        }
+    }
+
+    private void cancelAppointment() {
+        // Legacy method - now handled by updateAppointmentStatus
+        updateAppointmentStatus();
     }
 
     private JDialog createStyledDialog(String title, int width, int height) {
@@ -900,7 +1011,7 @@ public class AppointmentPanel extends JPanel {
                     List<Appointment> todayAppointments = allAppointments.stream()
                             .filter(apt -> apt.getAppointmentTime().toLocalDate().equals(LocalDate.now()))
                             .sorted((a1, a2) -> a1.getAppointmentTime().compareTo(a2.getAppointmentTime()))
-                            .toList();
+                            .collect(java.util.stream.Collectors.toList());
 
                     showTodaysAppointmentsDialog(todayAppointments);
                 } catch (Exception e) {
@@ -1050,6 +1161,72 @@ public class AppointmentPanel extends JPanel {
         demoDialog.setVisible(true);
 
         addNotification("📖 Design patterns demonstration viewed");
+    }
+
+    private void demonstrateRoleSwitching() {
+        JDialog roleDialog = createStyledDialog("👤 Role Switching Demo", 400, 300);
+
+        JPanel mainPanel = new JPanel(new BorderLayout(16, 16));
+        mainPanel.setBackground(BACKGROUND_COLOR);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+        JLabel currentRoleLabel = new JLabel("Current Role: " + currentUserRole);
+        currentRoleLabel.setFont(HEADER_FONT);
+        currentRoleLabel.setForeground(PRIMARY_COLOR);
+        mainPanel.add(currentRoleLabel, BorderLayout.NORTH);
+
+        JPanel rolePanel = new JPanel(new GridLayout(2, 1, 8, 8));
+        rolePanel.setBackground(CARD_COLOR);
+
+        JButton doctorBtn = createStyledButton("Switch to DOCTOR", ACCENT_COLOR, "");
+        JButton nurseBtn = createStyledButton("Switch to NURSE", WARNING_COLOR, "");
+
+        doctorBtn.addActionListener(e -> {
+            setCurrentUserRole("DOCTOR");
+            currentRoleLabel.setText("Current Role: " + currentUserRole);
+            roleDialog.dispose();
+            showSuccessDialog("Switched to DOCTOR role!\n\nDoctors can:\n• Complete appointments\n• Cancel appointments\n• Update appointment statuses");
+        });
+
+        nurseBtn.addActionListener(e -> {
+            setCurrentUserRole("NURSE");
+            currentRoleLabel.setText("Current Role: " + currentUserRole);
+            roleDialog.dispose();
+            showSuccessDialog("Switched to NURSE role!\n\nNurses can:\n• Cancel appointments only\n• Cannot complete appointments");
+        });
+
+        rolePanel.add(doctorBtn);
+        rolePanel.add(nurseBtn);
+
+        mainPanel.add(rolePanel, BorderLayout.CENTER);
+
+        JPanel infoPanel = new JPanel(new BorderLayout());
+        infoPanel.setBackground(CARD_COLOR);
+        infoPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        JTextArea infoArea = new JTextArea(
+            "Role-based permissions:\n\n" +
+            "DOCTOR:\n" +
+            "• Can complete appointments\n" +
+            "• Can cancel appointments\n" +
+            "• Full status update control\n\n" +
+            "NURSE:\n" +
+            "• Can only cancel appointments\n" +
+            "• Cannot complete appointments\n" +
+            "• Limited status control"
+        );
+        infoArea.setEditable(false);
+        infoArea.setFont(DATA_FONT);
+        infoArea.setBackground(CARD_COLOR);
+        infoArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        infoPanel.add(infoArea, BorderLayout.CENTER);
+        mainPanel.add(infoPanel, BorderLayout.SOUTH);
+
+        roleDialog.add(mainPanel);
+        roleDialog.setVisible(true);
+
+        addNotification("👤 Role switching demonstration viewed");
     }
 
     // Utility methods

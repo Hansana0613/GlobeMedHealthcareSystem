@@ -92,6 +92,10 @@ public class AppointmentService {
         return mediator.rescheduleAppointment(appointmentId, newTime, newLocation);
     }
 
+    public boolean updateAppointmentStatus(Long appointmentId, String newStatus) {
+        return mediator.updateAppointmentStatus(appointmentId, newStatus);
+    }
+
     public List<Appointment> getDoctorSchedule(Long doctorId, LocalDateTime date) {
         return mediator.getAvailableSlots(doctorId, date);
     }
@@ -102,7 +106,7 @@ public class AppointmentService {
     }
 
     public List<String> getAvailableRooms() {
-        return roomComponents.keySet().stream().toList();
+        return roomComponents.keySet().stream().collect(java.util.stream.Collectors.toList());
     }
 
     // Patient-specific operations

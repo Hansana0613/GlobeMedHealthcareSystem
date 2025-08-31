@@ -8,7 +8,11 @@ import com.globemed.patterns.chainofresponsibility.ClaimResult;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.SwingWorker;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -22,6 +26,22 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class BillingPanel extends JPanel {
+    
+    // Medical UI Color Scheme
+    private static final Color PRIMARY_BLUE = new Color(46, 134, 171);
+    private static final Color SECONDARY_WHITE = Color.WHITE;
+    private static final Color ACCENT_GREEN = new Color(76, 175, 80);
+    private static final Color WARNING_AMBER = new Color(255, 152, 0);
+    private static final Color ERROR_RED = new Color(244, 67, 54);
+    private static final Color BACKGROUND_GRAY = new Color(245, 245, 245);
+    private static final Color TEXT_DARK = new Color(33, 37, 41);
+    private static final Color BORDER_LIGHT = new Color(220, 220, 220);
+    
+    // Fonts
+    private static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 16);
+    private static final Font BODY_FONT = new Font("SansSerif", Font.PLAIN, 12);
+    private static final Font LABEL_FONT = new Font("SansSerif", Font.BOLD, 11);
+    private static final Font DATA_FONT = new Font("SansSerif", Font.PLAIN, 11);
 
     private BillingService billingService;
     private JTable billsTable;
@@ -59,6 +79,7 @@ public class BillingPanel extends JPanel {
 
     public BillingPanel(MainFrame mainFrame) {
         this.billingService = new BillingService();
+        setBackground(BACKGROUND_GRAY);
         initializeComponents();
         layoutComponents();
         setupEventHandlers();
@@ -67,46 +88,53 @@ public class BillingPanel extends JPanel {
     }
 
     private void initializeComponents() {
-        // Initialize tables
-        String[] billColumns = {"ID", "Appointment ID", "Total Amount", "Status", "Insurance", "Date Created"};
+        // Initialize tables with enhanced styling
+        String[] billColumns = {"Bill ID", "Appointment", "Total Amount", "Status", "Insurance", "Created"};
         billsModel = new DefaultTableModel(billColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        billsTable = new JTable(billsModel);
+        
+        billsTable = createStyledTable(billsModel);
         billsSorter = new TableRowSorter<>(billsModel);
         billsTable.setRowSorter(billsSorter);
-        billsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        String[] itemColumns = {"ID", "Type", "Description", "Cost"};
+        String[] itemColumns = {"Item ID", "Type", "Description", "Cost"};
         billItemsModel = new DefaultTableModel(itemColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        billItemsTable = new JTable(billItemsModel);
+        billItemsTable = createStyledTable(billItemsModel);
 
         // Initialize search and filter components
-        searchField = new JTextField(20);
-        statusFilter = new JComboBox<>(new String[]{"All", "PENDING", "APPROVED", "REJECTED", "PAID", "CANCELLED"});
-        fromDateSpinner = new JSpinner(new SpinnerDateModel());
-        toDateSpinner = new JSpinner(new SpinnerDateModel());
+        searchField = createStyledTextField(20, "Search bills...");
+        statusFilter = createStyledComboBox(new String[]{"All Statuses", "PENDING", "APPROVED", "REJECTED", "PAID", "CANCELLED"});
+        
+        fromDateSpinner = createStyledDateSpinner();
+        toDateSpinner = createStyledDateSpinner();
+        
         totalRevenueLabel = new JLabel("Total Revenue: $0.00");
+        totalRevenueLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+        totalRevenueLabel.setForeground(ACCENT_GREEN);
 
         // Initialize bill creation components
         appointmentIdSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
-        insuranceField = new JTextField(20);
-        itemDescriptionField = new JTextField(20);
-        itemCostField = new JTextField(10);
-        itemTypeCombo = new JComboBox<>(new String[]{"CONSULTATION", "TREATMENT", "MEDICATION", "DIAGNOSTIC", "TAX", "DISCOUNT", "LATE_FEE"});
+        styleSpinner(appointmentIdSpinner);
+        
+        insuranceField = createStyledTextField(20, "Insurance details (optional)");
+        itemDescriptionField = createStyledTextField(20, "Item description");
+        itemCostField = createStyledTextField(10, "0.00");
+        itemTypeCombo = createStyledComboBox(new String[]{"CONSULTATION", "TREATMENT", "MEDICATION", "DIAGNOSTIC", "TAX", "DISCOUNT", "LATE_FEE"});
 
         // Initialize appointment search components
-        appointmentSearchField = new JTextField(20);
-        searchAppointmentButton = new JButton("Search Appointment");
-        appointmentSearchResultsTable = new JTable();
+        appointmentSearchField = createStyledTextField(20, "Search by appointment ID");
+        searchAppointmentButton = createStyledButton("Search", PRIMARY_BLUE);
+        
+        appointmentSearchResultsTable = createStyledTable(null);
         appointmentSearchModel = new DefaultTableModel(new String[]{"ID", "Patient Name", "Date", "Time", "Status"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -114,100 +142,306 @@ public class BillingPanel extends JPanel {
             }
         };
         appointmentSearchResultsTable.setModel(appointmentSearchModel);
-        selectedAppointmentLabel = new JLabel("No appointment selected.");
+        
+        selectedAppointmentLabel = new JLabel("No appointment selected");
+        selectedAppointmentLabel.setFont(DATA_FONT);
+        selectedAppointmentLabel.setForeground(TEXT_DARK);
         selectedAppointmentId = null;
 
         // Initialize claim processing components
-        claimTypeCombo = new JComboBox<>(new String[]{"INSURANCE", "DIRECT_PAY", "PARTIAL_INSURANCE"});
-        insuranceProviderField = new JTextField(15);
-        policyNumberField = new JTextField(15);
+        claimTypeCombo = createStyledComboBox(new String[]{"INSURANCE", "DIRECT_PAY", "PARTIAL_INSURANCE"});
+        insuranceProviderField = createStyledTextField(15, "Provider name");
+        policyNumberField = createStyledTextField(15, "Policy number");
+    }
 
-        // Configure date spinners
-        JSpinner.DateEditor fromDateEditor = new JSpinner.DateEditor(fromDateSpinner, "yyyy-MM-dd");
-        JSpinner.DateEditor toDateEditor = new JSpinner.DateEditor(toDateSpinner, "yyyy-MM-dd");
-        fromDateSpinner.setEditor(fromDateEditor);
-        toDateSpinner.setEditor(toDateEditor);
+    private JTable createStyledTable(DefaultTableModel model) {
+        JTable table = new JTable(model);
+        table.setRowHeight(32);
+        table.setFont(DATA_FONT);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setSelectionBackground(new Color(PRIMARY_BLUE.getRed(), PRIMARY_BLUE.getGreen(), PRIMARY_BLUE.getBlue(), 40));
+        table.setSelectionForeground(TEXT_DARK);
+        table.setGridColor(BORDER_LIGHT);
+        table.setBackground(SECONDARY_WHITE);
+        table.setIntercellSpacing(new Dimension(1, 1));
+        
+        // Style header
+        table.getTableHeader().setFont(LABEL_FONT);
+        table.getTableHeader().setBackground(PRIMARY_BLUE);
+        table.getTableHeader().setForeground(SECONDARY_WHITE);
+        table.getTableHeader().setBorder(new LineBorder(PRIMARY_BLUE));
+        table.getTableHeader().setPreferredSize(new Dimension(0, 36));
+        
+        // Custom cell renderer for status column
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
+                    boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                if (!isSelected && column == 3 && value != null) { // Status column
+                    String status = value.toString();
+                    switch (status) {
+                        case "APPROVED":
+                        case "PAID":
+                            c.setBackground(new Color(ACCENT_GREEN.getRed(), ACCENT_GREEN.getGreen(), ACCENT_GREEN.getBlue(), 40));
+                            break;
+                        case "REJECTED":
+                        case "CANCELLED":
+                            c.setBackground(new Color(ERROR_RED.getRed(), ERROR_RED.getGreen(), ERROR_RED.getBlue(), 40));
+                            break;
+                        case "PENDING":
+                            c.setBackground(new Color(WARNING_AMBER.getRed(), WARNING_AMBER.getGreen(), WARNING_AMBER.getBlue(), 40));
+                            break;
+                        default:
+                            c.setBackground(SECONDARY_WHITE);
+                    }
+                } else if (!isSelected) {
+                    c.setBackground(SECONDARY_WHITE);
+                }
+                
+                return c;
+            }
+        });
+        
+        return table;
+    }
 
-        // Set some styling
-        billsTable.setRowHeight(25);
-        billItemsTable.setRowHeight(25);
-        totalRevenueLabel.setFont(totalRevenueLabel.getFont().deriveFont(Font.BOLD, 16));
-        totalRevenueLabel.setForeground(new Color(0, 120, 0));
+    private JTextField createStyledTextField(int columns, String placeholder) {
+        JTextField field = new JTextField(columns);
+        field.setFont(DATA_FONT);
+        field.setBorder(new CompoundBorder(
+            new LineBorder(BORDER_LIGHT, 1),
+            new EmptyBorder(8, 12, 8, 12)
+        ));
+        field.setBackground(SECONDARY_WHITE);
+        field.setPreferredSize(new Dimension(field.getPreferredSize().width, 36));
+        
+        // Add placeholder text effect
+        field.setForeground(Color.GRAY);
+        field.setText(placeholder);
+        field.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                if (field.getText().equals(placeholder)) {
+                    field.setText("");
+                    field.setForeground(TEXT_DARK);
+                }
+            }
+            @Override
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                if (field.getText().isEmpty()) {
+                    field.setForeground(Color.GRAY);
+                    field.setText(placeholder);
+                }
+            }
+        });
+        
+        return field;
+    }
+
+    private JComboBox<String> createStyledComboBox(String[] items) {
+        JComboBox<String> combo = new JComboBox<>(items);
+        combo.setFont(DATA_FONT);
+        combo.setBackground(SECONDARY_WHITE);
+        combo.setBorder(new LineBorder(BORDER_LIGHT, 1));
+        combo.setPreferredSize(new Dimension(combo.getPreferredSize().width, 36));
+        return combo;
+    }
+
+    private JButton createStyledButton(String text, Color bgColor) {
+        JButton button = new JButton(text);
+        button.setFont(LABEL_FONT);
+        button.setBackground(bgColor);
+        button.setForeground(SECONDARY_WHITE);
+        button.setBorder(new EmptyBorder(8, 16, 8, 16));
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(button.getPreferredSize().width, 36));
+        
+        // Hover effect
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(bgColor.darker());
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+        
+        return button;
+    }
+
+    private JSpinner createStyledDateSpinner() {
+        JSpinner spinner = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor editor = new JSpinner.DateEditor(spinner, "yyyy-MM-dd");
+        spinner.setEditor(editor);
+        styleSpinner(spinner);
+        return spinner;
+    }
+
+    private void styleSpinner(JSpinner spinner) {
+        spinner.setFont(DATA_FONT);
+        spinner.setBorder(new LineBorder(BORDER_LIGHT, 1));
+        spinner.setPreferredSize(new Dimension(spinner.getPreferredSize().width, 36));
+        
+        // Style the editor component
+        JComponent editor = spinner.getEditor();
+        if (editor instanceof JSpinner.DefaultEditor) {
+            ((JSpinner.DefaultEditor) editor).getTextField().setBorder(new EmptyBorder(8, 12, 8, 12));
+        }
+    }
+
+    private JPanel createStyledPanel(String title) {
+        JPanel panel = new JPanel();
+        panel.setBackground(SECONDARY_WHITE);
+        panel.setBorder(new CompoundBorder(
+            new LineBorder(BORDER_LIGHT, 1),
+            new EmptyBorder(16, 16, 16, 16)
+        ));
+        
+        if (title != null) {
+            panel.setBorder(BorderFactory.createTitledBorder(
+                new LineBorder(BORDER_LIGHT, 1), 
+                title, 
+                0, 
+                0, 
+                HEADER_FONT, 
+                PRIMARY_BLUE
+            ));
+        }
+        
+        return panel;
     }
 
     private void layoutComponents() {
-        setLayout(new BorderLayout());
+        setLayout(new BorderLayout(0, 8));
+        setBorder(new EmptyBorder(16, 16, 16, 16));
 
-        // Create main tabbed pane
+        // Create header
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(BACKGROUND_GRAY);
+        
+        JLabel titleLabel = new JLabel("Billing Management");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(PRIMARY_BLUE);
+        headerPanel.add(titleLabel, BorderLayout.WEST);
+        
+        add(headerPanel, BorderLayout.NORTH);
+
+        // Create main tabbed pane with enhanced styling
         JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(LABEL_FONT);
+        tabbedPane.setBackground(BACKGROUND_GRAY);
+        tabbedPane.setBorder(new EmptyBorder(8, 0, 0, 0));
 
         // Bills Management Tab
         JPanel billsManagementPanel = createBillsManagementPanel();
-        tabbedPane.addTab("Bills Management", billsManagementPanel);
+        tabbedPane.addTab("📋 Bills Overview", billsManagementPanel);
 
         // Create Bill Tab
         JPanel createBillPanel = createBillCreationPanel();
-        tabbedPane.addTab("Create Bill", createBillPanel);
+        tabbedPane.addTab("➕ Create Bill", createBillPanel);
 
         // Process Claims Tab
         JPanel processClaimsPanel = createClaimProcessingPanel();
-        tabbedPane.addTab("Process Claims", processClaimsPanel);
+        tabbedPane.addTab("🔄 Process Claims", processClaimsPanel);
 
         add(tabbedPane, BorderLayout.CENTER);
     }
 
     private JPanel createBillsManagementPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setBackground(BACKGROUND_GRAY);
+        panel.setBorder(new EmptyBorder(16, 16, 16, 16));
 
         // Search and filter panel
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        searchPanel.setBorder(BorderFactory.createTitledBorder("Search & Filter"));
+        JPanel searchPanel = createStyledPanel("Search & Filter");
+        searchPanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 4, 4, 4);
 
-        searchPanel.add(new JLabel("Search:"));
-        searchPanel.add(searchField);
-        searchPanel.add(Box.createHorizontalStrut(10));
-        searchPanel.add(new JLabel("Status:"));
-        searchPanel.add(statusFilter);
-        searchPanel.add(Box.createHorizontalStrut(10));
-        searchPanel.add(new JLabel("From:"));
-        searchPanel.add(fromDateSpinner);
-        searchPanel.add(new JLabel("To:"));
-        searchPanel.add(toDateSpinner);
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel searchLabel = new JLabel("Search:");
+        searchLabel.setFont(LABEL_FONT);
+        searchPanel.add(searchLabel, gbc);
+        
+        gbc.gridx = 1;
+        searchPanel.add(searchField, gbc);
 
-        JButton searchButton = new JButton("Search");
-        JButton resetButton = new JButton("Reset");
-        searchPanel.add(searchButton);
-        searchPanel.add(resetButton);
+        gbc.gridx = 2;
+        JLabel statusLabel = new JLabel("Status:");
+        statusLabel.setFont(LABEL_FONT);
+        searchPanel.add(statusLabel, gbc);
+        
+        gbc.gridx = 3;
+        searchPanel.add(statusFilter, gbc);
+
+        gbc.gridx = 4;
+        JLabel fromLabel = new JLabel("From:");
+        fromLabel.setFont(LABEL_FONT);
+        searchPanel.add(fromLabel, gbc);
+        
+        gbc.gridx = 5;
+        searchPanel.add(fromDateSpinner, gbc);
+
+        gbc.gridx = 6;
+        JLabel toLabel = new JLabel("To:");
+        toLabel.setFont(LABEL_FONT);
+        searchPanel.add(toLabel, gbc);
+        
+        gbc.gridx = 7;
+        searchPanel.add(toDateSpinner, gbc);
+
+        gbc.gridx = 8;
+        JButton searchButton = createStyledButton("Search", PRIMARY_BLUE);
+        searchPanel.add(searchButton, gbc);
+        
+        gbc.gridx = 9;
+        JButton resetButton = createStyledButton("Reset", Color.GRAY);
+        searchPanel.add(resetButton, gbc);
 
         panel.add(searchPanel, BorderLayout.NORTH);
 
         // Main content panel
-        JPanel mainContent = new JPanel(new GridLayout(2, 1));
+        JPanel mainContent = new JPanel(new GridLayout(2, 1, 0, 8));
+        mainContent.setBackground(BACKGROUND_GRAY);
 
         // Bills table panel
-        JPanel billsTablePanel = new JPanel(new BorderLayout());
-        billsTablePanel.setBorder(BorderFactory.createTitledBorder("Bills"));
-        billsTablePanel.add(new JScrollPane(billsTable), BorderLayout.CENTER);
+        JPanel billsTablePanel = createStyledPanel("Bills");
+        billsTablePanel.setLayout(new BorderLayout(0, 8));
+        
+        JScrollPane billsScrollPane = new JScrollPane(billsTable);
+        billsScrollPane.setBorder(new LineBorder(BORDER_LIGHT, 1));
+        billsScrollPane.getViewport().setBackground(SECONDARY_WHITE);
+        billsTablePanel.add(billsScrollPane, BorderLayout.CENTER);
 
         // Bills action panel
-        JPanel billsActionPanel = new JPanel(new FlowLayout());
-        JButton viewBillButton = new JButton("View Details");
-        JButton updateStatusButton = new JButton("Update Status");
-        JButton deleteBillButton = new JButton("Delete Bill");
-        JButton refreshButton = new JButton("Refresh");
-        JButton refreshAllButton = new JButton("Refresh All Data");
+        JPanel billsActionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        billsActionPanel.setBackground(SECONDARY_WHITE);
+        
+        JButton viewBillButton = createStyledButton("View Details", PRIMARY_BLUE);
+        JButton updateStatusButton = createStyledButton("Update Status", WARNING_AMBER);
+        JButton deleteBillButton = createStyledButton("Delete", ERROR_RED);
+        JButton refreshButton = createStyledButton("Refresh", Color.GRAY);
 
         billsActionPanel.add(viewBillButton);
         billsActionPanel.add(updateStatusButton);
         billsActionPanel.add(deleteBillButton);
         billsActionPanel.add(refreshButton);
-        billsActionPanel.add(refreshAllButton);
+        
         billsTablePanel.add(billsActionPanel, BorderLayout.SOUTH);
 
         // Bill items table panel
-        JPanel itemsTablePanel = new JPanel(new BorderLayout());
-        itemsTablePanel.setBorder(BorderFactory.createTitledBorder("Bill Items"));
-        itemsTablePanel.add(new JScrollPane(billItemsTable), BorderLayout.CENTER);
+        JPanel itemsTablePanel = createStyledPanel("Bill Items");
+        itemsTablePanel.setLayout(new BorderLayout());
+        
+        JScrollPane itemsScrollPane = new JScrollPane(billItemsTable);
+        itemsScrollPane.setBorder(new LineBorder(BORDER_LIGHT, 1));
+        itemsScrollPane.getViewport().setBackground(SECONDARY_WHITE);
+        itemsTablePanel.add(itemsScrollPane, BorderLayout.CENTER);
 
         mainContent.add(billsTablePanel);
         mainContent.add(itemsTablePanel);
@@ -215,7 +449,8 @@ public class BillingPanel extends JPanel {
         panel.add(mainContent, BorderLayout.CENTER);
 
         // Revenue panel
-        JPanel revenuePanel = new JPanel(new FlowLayout());
+        JPanel revenuePanel = createStyledPanel(null);
+        revenuePanel.setLayout(new FlowLayout(FlowLayout.CENTER));
         revenuePanel.add(totalRevenueLabel);
         panel.add(revenuePanel, BorderLayout.SOUTH);
 
@@ -226,7 +461,6 @@ public class BillingPanel extends JPanel {
         updateStatusButton.addActionListener(e -> updateBillStatus());
         deleteBillButton.addActionListener(e -> deleteBill());
         refreshButton.addActionListener(e -> refreshBillsTable());
-        refreshAllButton.addActionListener(e -> refreshAllBillData());
 
         billsTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -254,41 +488,43 @@ public class BillingPanel extends JPanel {
         return panel;
     }
 
-    /**
-     * Show context menu for right-click on bills table
-     */
     private void showContextMenu(MouseEvent e) {
         int row = billsTable.rowAtPoint(e.getPoint());
         if (row >= 0) {
             billsTable.setRowSelectionInterval(row, row);
             
             JPopupMenu contextMenu = new JPopupMenu();
+            contextMenu.setBorder(new LineBorder(BORDER_LIGHT, 1));
             
-            JMenuItem addBillItemsItem = new JMenuItem("Add Bill Items");
+            JMenuItem addBillItemsItem = new JMenuItem("➕ Add Bill Items");
+            addBillItemsItem.setFont(DATA_FONT);
             addBillItemsItem.addActionListener(evt -> {
-                // Switch to Create Bill tab
                 JTabbedPane tabbedPane = (JTabbedPane) SwingUtilities.getAncestorOfClass(JTabbedPane.class, billsTable);
                 if (tabbedPane != null) {
-                    tabbedPane.setSelectedIndex(1); // Create Bill tab
+                    tabbedPane.setSelectedIndex(1);
                 }
             });
             
-            JMenuItem processClaimItem = new JMenuItem("Process Claims");
+            JMenuItem processClaimItem = new JMenuItem("🔄 Process Claims");
+            processClaimItem.setFont(DATA_FONT);
             processClaimItem.addActionListener(evt -> {
-                // Switch to Process Claims tab
                 JTabbedPane tabbedPane = (JTabbedPane) SwingUtilities.getAncestorOfClass(JTabbedPane.class, billsTable);
                 if (tabbedPane != null) {
-                    tabbedPane.setSelectedIndex(2); // Process Claims tab
+                    tabbedPane.setSelectedIndex(2);
                 }
             });
             
-            JMenuItem viewDetailsItem = new JMenuItem("View Details");
+            JMenuItem viewDetailsItem = new JMenuItem("👁 View Details");
+            viewDetailsItem.setFont(DATA_FONT);
             viewDetailsItem.addActionListener(evt -> viewBillDetails());
             
-            JMenuItem updateStatusItem = new JMenuItem("Update Status");
+            JMenuItem updateStatusItem = new JMenuItem("📝 Update Status");
+            updateStatusItem.setFont(DATA_FONT);
             updateStatusItem.addActionListener(evt -> updateBillStatus());
             
-            JMenuItem deleteItem = new JMenuItem("Delete Bill");
+            JMenuItem deleteItem = new JMenuItem("🗑 Delete Bill");
+            deleteItem.setFont(DATA_FONT);
+            deleteItem.setForeground(ERROR_RED);
             deleteItem.addActionListener(evt -> deleteBill());
             
             contextMenu.add(addBillItemsItem);
@@ -296,6 +532,7 @@ public class BillingPanel extends JPanel {
             contextMenu.addSeparator();
             contextMenu.add(viewDetailsItem);
             contextMenu.add(updateStatusItem);
+            contextMenu.addSeparator();
             contextMenu.add(deleteItem);
             
             contextMenu.show(billsTable, e.getX(), e.getY());
@@ -303,50 +540,64 @@ public class BillingPanel extends JPanel {
     }
 
     private JPanel createBillCreationPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setBackground(BACKGROUND_GRAY);
+        panel.setBorder(new EmptyBorder(16, 16, 16, 16));
 
         // Bill creation form
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createTitledBorder("Create New Bill"));
+        JPanel formPanel = createStyledPanel("Create New Bill");
+        formPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.anchor = GridBagConstraints.WEST;
 
         // Appointment ID
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        formPanel.add(new JLabel("Appointment ID:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel appointmentLabel = new JLabel("Appointment ID:");
+        appointmentLabel.setFont(LABEL_FONT);
+        formPanel.add(appointmentLabel, gbc);
         gbc.gridx = 1;
         formPanel.add(appointmentIdSpinner, gbc);
 
         // Insurance Details
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        formPanel.add(new JLabel("Insurance Details:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 1;
+        JLabel insuranceLabel = new JLabel("Insurance Details:");
+        insuranceLabel.setFont(LABEL_FONT);
+        formPanel.add(insuranceLabel, gbc);
         gbc.gridx = 1;
         formPanel.add(insuranceField, gbc);
 
         // Appointment Search
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        formPanel.add(new JLabel("Search Appointment:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 2;
+        JLabel searchLabel = new JLabel("Search Appointment:");
+        searchLabel.setFont(LABEL_FONT);
+        formPanel.add(searchLabel, gbc);
         gbc.gridx = 1;
         formPanel.add(appointmentSearchField, gbc);
         gbc.gridx = 2;
         formPanel.add(searchAppointmentButton, gbc);
 
         // Selected Appointment Info
-        gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridx = 0; gbc.gridy = 3;
         gbc.gridwidth = 3;
-        formPanel.add(selectedAppointmentLabel, gbc);
+        JPanel selectedPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        selectedPanel.setBackground(SECONDARY_WHITE);
+        selectedPanel.setBorder(new CompoundBorder(
+            new LineBorder(ACCENT_GREEN, 1),
+            new EmptyBorder(8, 12, 8, 12)
+        ));
+        selectedPanel.add(selectedAppointmentLabel);
+        formPanel.add(selectedPanel, gbc);
 
         // Buttons
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 4;
+        gbc.gridwidth = 3;
         JPanel buttonPanel = new JPanel(new FlowLayout());
-        JButton createBillButton = new JButton("Create Bill");
-        JButton clearFormButton = new JButton("Clear Form");
+        buttonPanel.setBackground(SECONDARY_WHITE);
+        
+        JButton createBillButton = createStyledButton("Create Bill", ACCENT_GREEN);
+        JButton clearFormButton = createStyledButton("Clear Form", Color.GRAY);
+        
         buttonPanel.add(createBillButton);
         buttonPanel.add(clearFormButton);
         formPanel.add(buttonPanel, gbc);
@@ -354,62 +605,53 @@ public class BillingPanel extends JPanel {
         panel.add(formPanel, BorderLayout.NORTH);
 
         // Appointment search results panel
-        JPanel searchResultsPanel = new JPanel(new BorderLayout());
-        searchResultsPanel.setBorder(BorderFactory.createTitledBorder("Appointment Search Results"));
-        
-        // Configure the appointment search results table
-        appointmentSearchResultsTable.setRowHeight(25);
-        appointmentSearchResultsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JPanel searchResultsPanel = createStyledPanel("Appointment Search Results");
+        searchResultsPanel.setLayout(new BorderLayout(0, 8));
         
         JScrollPane searchResultsScroll = new JScrollPane(appointmentSearchResultsTable);
+        searchResultsScroll.setBorder(new LineBorder(BORDER_LIGHT, 1));
+        searchResultsScroll.getViewport().setBackground(SECONDARY_WHITE);
         searchResultsScroll.setPreferredSize(new Dimension(500, 200));
         searchResultsPanel.add(searchResultsScroll, BorderLayout.CENTER);
-        
-        // Add selection info
-        JPanel selectionInfoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        selectionInfoPanel.add(new JLabel("Selected Appointment: "));
-        selectionInfoPanel.add(selectedAppointmentLabel);
-        searchResultsPanel.add(selectionInfoPanel, BorderLayout.SOUTH);
         
         panel.add(searchResultsPanel, BorderLayout.CENTER);
 
         // Bill items management
-        JPanel itemsPanel = new JPanel(new BorderLayout());
-        itemsPanel.setBorder(BorderFactory.createTitledBorder("Add Bill Items"));
-
-        JPanel itemFormPanel = new JPanel(new GridBagLayout());
+        JPanel itemsPanel = createStyledPanel("Add Bill Items");
+        itemsPanel.setLayout(new GridBagLayout());
         gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(8, 8, 8, 8);
 
         // Item Type
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        itemFormPanel.add(new JLabel("Type:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel typeLabel = new JLabel("Type:");
+        typeLabel.setFont(LABEL_FONT);
+        itemsPanel.add(typeLabel, gbc);
         gbc.gridx = 1;
-        itemFormPanel.add(itemTypeCombo, gbc);
+        itemsPanel.add(itemTypeCombo, gbc);
 
         // Item Description
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        itemFormPanel.add(new JLabel("Description:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 1;
+        JLabel descLabel = new JLabel("Description:");
+        descLabel.setFont(LABEL_FONT);
+        itemsPanel.add(descLabel, gbc);
         gbc.gridx = 1;
-        itemFormPanel.add(itemDescriptionField, gbc);
+        itemsPanel.add(itemDescriptionField, gbc);
 
         // Item Cost
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        itemFormPanel.add(new JLabel("Cost:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 2;
+        JLabel costLabel = new JLabel("Cost:");
+        costLabel.setFont(LABEL_FONT);
+        itemsPanel.add(costLabel, gbc);
         gbc.gridx = 1;
-        itemFormPanel.add(itemCostField, gbc);
+        itemsPanel.add(itemCostField, gbc);
 
         // Add item button
-        gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridx = 0; gbc.gridy = 3;
         gbc.gridwidth = 2;
-        JButton addItemButton = new JButton("Add Item to Selected Bill");
-        itemFormPanel.add(addItemButton, gbc);
+        JButton addItemButton = createStyledButton("Add Item to Selected Bill", PRIMARY_BLUE);
+        itemsPanel.add(addItemButton, gbc);
 
-        itemsPanel.add(itemFormPanel, BorderLayout.CENTER);
         panel.add(itemsPanel, BorderLayout.SOUTH);
 
         // Event handlers for bill creation
@@ -432,41 +674,49 @@ public class BillingPanel extends JPanel {
     }
 
     private JPanel createClaimProcessingPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setBackground(BACKGROUND_GRAY);
+        panel.setBorder(new EmptyBorder(16, 16, 16, 16));
 
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createTitledBorder("Process Insurance Claims"));
+        JPanel formPanel = createStyledPanel("Process Insurance Claims");
+        formPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.anchor = GridBagConstraints.WEST;
 
         // Claim Type
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        formPanel.add(new JLabel("Claim Type:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel claimLabel = new JLabel("Claim Type:");
+        claimLabel.setFont(LABEL_FONT);
+        formPanel.add(claimLabel, gbc);
         gbc.gridx = 1;
         formPanel.add(claimTypeCombo, gbc);
 
         // Insurance Provider
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        formPanel.add(new JLabel("Insurance Provider:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 1;
+        JLabel providerLabel = new JLabel("Insurance Provider:");
+        providerLabel.setFont(LABEL_FONT);
+        formPanel.add(providerLabel, gbc);
         gbc.gridx = 1;
         formPanel.add(insuranceProviderField, gbc);
 
         // Policy Number
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        formPanel.add(new JLabel("Policy Number:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 2;
+        JLabel policyLabel = new JLabel("Policy Number:");
+        policyLabel.setFont(LABEL_FONT);
+        formPanel.add(policyLabel, gbc);
         gbc.gridx = 1;
         formPanel.add(policyNumberField, gbc);
 
         // Process buttons
-        gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridx = 0; gbc.gridy = 3;
         gbc.gridwidth = 2;
         JPanel processButtonPanel = new JPanel(new FlowLayout());
-        JButton processClaimButton = new JButton("Process Selected Bill Claim");
-        JButton processComplexBillButton = new JButton("Process with Decorators");
+        processButtonPanel.setBackground(SECONDARY_WHITE);
+        
+        JButton processClaimButton = createStyledButton("Process Selected Bill", ACCENT_GREEN);
+        JButton processComplexBillButton = createStyledButton("Process with Decorators", PRIMARY_BLUE);
+        
         processButtonPanel.add(processClaimButton);
         processButtonPanel.add(processComplexBillButton);
         formPanel.add(processButtonPanel, gbc);
@@ -476,9 +726,21 @@ public class BillingPanel extends JPanel {
         // Results area
         JTextArea resultsArea = new JTextArea(15, 50);
         resultsArea.setEditable(false);
-        resultsArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        resultsArea.setFont(new Font("Consolas", Font.PLAIN, 12));
+        resultsArea.setBackground(SECONDARY_WHITE);
+        resultsArea.setBorder(new EmptyBorder(12, 12, 12, 12));
+        
         JScrollPane resultsScroll = new JScrollPane(resultsArea);
-        resultsScroll.setBorder(BorderFactory.createTitledBorder("Processing Results"));
+        resultsScroll.setBorder(new CompoundBorder(
+            BorderFactory.createTitledBorder(
+                new LineBorder(BORDER_LIGHT, 1), 
+                "Processing Results", 
+                0, 0, HEADER_FONT, PRIMARY_BLUE
+            ),
+            new EmptyBorder(8, 8, 8, 8)
+        ));
+        resultsScroll.getViewport().setBackground(SECONDARY_WHITE);
+        
         panel.add(resultsScroll, BorderLayout.CENTER);
 
         // Event handlers for claim processing
@@ -489,7 +751,6 @@ public class BillingPanel extends JPanel {
     }
 
     private void setupEventHandlers() {
-        // Additional global event handlers can be added here
         statusFilter.addActionListener(e -> performSearch());
     }
 
@@ -505,15 +766,12 @@ public class BillingPanel extends JPanel {
                     "$" + bill.getTotalAmount().toString(),
                     bill.getClaimStatus(),
                     bill.getInsuranceDetails() != null ? bill.getInsuranceDetails() : "Direct Pay",
-                    "N/A" // Would need created_at field in database
+                    "N/A"
                 };
                 billsModel.addRow(row);
             }
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Error loading bills: " + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Error loading bills: " + e.getMessage());
         }
     }
 
@@ -537,38 +795,38 @@ public class BillingPanel extends JPanel {
                     }
                 }
             } catch (SQLException e) {
-                JOptionPane.showMessageDialog(this,
-                        "Error loading bill items: " + e.getMessage(),
-                        "Database Error",
-                        JOptionPane.ERROR_MESSAGE);
+                showErrorDialog("Error loading bill items: " + e.getMessage());
             }
         }
     }
 
     private void performSearch() {
-        String searchText = searchField.getText().trim().toLowerCase();
-        String selectedStatus = (String) statusFilter.getSelectedItem();
+        final String searchText = searchField.getText().trim().toLowerCase();
+        final String finalSearchText = searchText.equals("search bills...") ? "" : searchText;
+        
+        final String selectedStatus = (String) statusFilter.getSelectedItem();
+        final String finalSelectedStatus = "All Statuses".equals(selectedStatus) ? "All" : selectedStatus;
 
-        if (searchText.isEmpty() && "All".equals(selectedStatus)) {
+        if (finalSearchText.isEmpty() && "All".equals(finalSelectedStatus)) {
             billsSorter.setRowFilter(null);
         } else {
             billsSorter.setRowFilter(new RowFilter<DefaultTableModel, Object>() {
                 @Override
                 public boolean include(Entry<? extends DefaultTableModel, ? extends Object> entry) {
-                    boolean matchesSearch = searchText.isEmpty();
-                    boolean matchesStatus = "All".equals(selectedStatus);
+                    boolean matchesSearch = finalSearchText.isEmpty();
+                    boolean matchesStatus = "All".equals(finalSelectedStatus);
 
-                    if (!searchText.isEmpty()) {
+                    if (!finalSearchText.isEmpty()) {
                         for (int i = 0; i < entry.getValueCount(); i++) {
-                            if (entry.getStringValue(i).toLowerCase().contains(searchText)) {
+                            if (entry.getStringValue(i).toLowerCase().contains(finalSearchText)) {
                                 matchesSearch = true;
                                 break;
                             }
                         }
                     }
 
-                    if (!"All".equals(selectedStatus)) {
-                        matchesStatus = selectedStatus.equals(entry.getStringValue(3));
+                    if (!"All".equals(finalSelectedStatus)) {
+                        matchesStatus = finalSelectedStatus.equals(entry.getStringValue(3));
                     }
 
                     return matchesSearch && matchesStatus;
@@ -578,7 +836,8 @@ public class BillingPanel extends JPanel {
     }
 
     private void resetFilters() {
-        searchField.setText("");
+        searchField.setText("Search bills...");
+        searchField.setForeground(Color.GRAY);
         statusFilter.setSelectedIndex(0);
         fromDateSpinner.setValue(new java.util.Date());
         toDateSpinner.setValue(new java.util.Date());
@@ -593,38 +852,123 @@ public class BillingPanel extends JPanel {
                 Bill bill = billingService.getBillById(billId);
 
                 if (bill != null) {
-                    StringBuilder details = new StringBuilder();
-                    details.append("Bill ID: ").append(bill.getId()).append("\n");
-                    details.append("Appointment ID: ").append(bill.getAppointmentId()).append("\n");
-                    details.append("Total Amount: $").append(bill.getTotalAmount()).append("\n");
-                    details.append("Status: ").append(bill.getClaimStatus()).append("\n");
-                    details.append("Insurance: ").append(bill.getInsuranceDetails() != null ? bill.getInsuranceDetails() : "Direct Pay").append("\n\n");
-                    details.append("Bill Items:\n");
-
-                    for (BillItem item : bill.getBillItems()) {
-                        details.append("- ").append(item.getDescription())
-                                .append(" (").append(item.getItemType()).append("): $")
-                                .append(item.getCost()).append("\n");
-                    }
-
-                    JTextArea textArea = new JTextArea(details.toString());
-                    textArea.setEditable(false);
-                    textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-
-                    JScrollPane scrollPane = new JScrollPane(textArea);
-                    scrollPane.setPreferredSize(new Dimension(400, 300));
-
-                    JOptionPane.showMessageDialog(this, scrollPane, "Bill Details", JOptionPane.INFORMATION_MESSAGE);
+                    showBillDetailsDialog(bill);
                 }
             } catch (SQLException e) {
-                JOptionPane.showMessageDialog(this,
-                        "Error loading bill details: " + e.getMessage(),
-                        "Database Error",
-                        JOptionPane.ERROR_MESSAGE);
+                showErrorDialog("Error loading bill details: " + e.getMessage());
             }
         } else {
-            JOptionPane.showMessageDialog(this, "Please select a bill to view details.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            showWarningDialog("Please select a bill to view details.");
         }
+    }
+
+    private void showBillDetailsDialog(Bill bill) {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Bill Details", true);
+        dialog.setSize(600, 500);
+        dialog.setLocationRelativeTo(this);
+        dialog.getContentPane().setBackground(BACKGROUND_GRAY);
+
+        JPanel content = new JPanel(new BorderLayout(0, 16));
+        content.setBorder(new EmptyBorder(20, 20, 20, 20));
+        content.setBackground(BACKGROUND_GRAY);
+
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(PRIMARY_BLUE);
+        headerPanel.setBorder(new EmptyBorder(16, 20, 16, 20));
+        
+        JLabel titleLabel = new JLabel("Bill #" + bill.getId());
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
+        titleLabel.setForeground(SECONDARY_WHITE);
+        headerPanel.add(titleLabel, BorderLayout.WEST);
+        
+        JLabel statusLabel = new JLabel(bill.getClaimStatus());
+        statusLabel.setFont(LABEL_FONT);
+        statusLabel.setForeground(SECONDARY_WHITE);
+        headerPanel.add(statusLabel, BorderLayout.EAST);
+
+        content.add(headerPanel, BorderLayout.NORTH);
+
+        // Details panel
+        JPanel detailsPanel = createStyledPanel(null);
+        detailsPanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        addDetailRow(detailsPanel, gbc, 0, "Appointment ID:", String.valueOf(bill.getAppointmentId()));
+        addDetailRow(detailsPanel, gbc, 1, "Total Amount:", "$" + bill.getTotalAmount().toString());
+        addDetailRow(detailsPanel, gbc, 2, "Insurance:", bill.getInsuranceDetails() != null ? bill.getInsuranceDetails() : "Direct Pay");
+
+        // Items section
+        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0; gbc.weighty = 1.0;
+
+        JPanel itemsPanel = new JPanel(new BorderLayout());
+        itemsPanel.setBackground(SECONDARY_WHITE);
+        itemsPanel.setBorder(new CompoundBorder(
+            new LineBorder(BORDER_LIGHT, 1),
+            new EmptyBorder(8, 8, 8, 8)
+        ));
+
+        JLabel itemsLabel = new JLabel("Bill Items");
+        itemsLabel.setFont(HEADER_FONT);
+        itemsLabel.setForeground(PRIMARY_BLUE);
+        itemsPanel.add(itemsLabel, BorderLayout.NORTH);
+
+        StringBuilder itemsText = new StringBuilder();
+        if (bill.getBillItems() != null) {
+            for (BillItem item : bill.getBillItems()) {
+                itemsText.append("• ").append(item.getDescription())
+                        .append(" (").append(item.getItemType()).append("): $")
+                        .append(item.getCost()).append("\n");
+            }
+        }
+
+        JTextArea itemsArea = new JTextArea(itemsText.toString());
+        itemsArea.setEditable(false);
+        itemsArea.setFont(DATA_FONT);
+        itemsArea.setBackground(SECONDARY_WHITE);
+        itemsArea.setBorder(new EmptyBorder(8, 8, 8, 8));
+
+        JScrollPane itemsScroll = new JScrollPane(itemsArea);
+        itemsScroll.setBorder(null);
+        itemsPanel.add(itemsScroll, BorderLayout.CENTER);
+
+        detailsPanel.add(itemsPanel, gbc);
+        content.add(detailsPanel, BorderLayout.CENTER);
+
+        // Close button
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.setBackground(BACKGROUND_GRAY);
+        JButton closeButton = createStyledButton("Close", Color.GRAY);
+        closeButton.addActionListener(e -> dialog.dispose());
+        buttonPanel.add(closeButton);
+
+        content.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.add(content);
+        dialog.setVisible(true);
+    }
+
+    private void addDetailRow(JPanel panel, GridBagConstraints gbc, int row, String label, String value) {
+        gbc.gridx = 0; gbc.gridy = row;
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0; gbc.weighty = 0;
+
+        JLabel labelComponent = new JLabel(label);
+        labelComponent.setFont(LABEL_FONT);
+        labelComponent.setForeground(TEXT_DARK);
+        panel.add(labelComponent, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        JLabel valueComponent = new JLabel(value != null ? value : "");
+        valueComponent.setFont(DATA_FONT);
+        valueComponent.setForeground(TEXT_DARK);
+        panel.add(valueComponent, gbc);
     }
 
     private void updateBillStatus() {
@@ -648,20 +992,17 @@ public class BillingPanel extends JPanel {
 
                     if (success) {
                         billsModel.setValueAt(newStatus, selectedRow, 3);
-                        JOptionPane.showMessageDialog(this, "Bill status updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                        showSuccessDialog("Bill status updated successfully!");
                         updateTotalRevenue();
                     } else {
-                        JOptionPane.showMessageDialog(this, "Failed to update bill status.", "Error", JOptionPane.ERROR_MESSAGE);
+                        showErrorDialog("Failed to update bill status.");
                     }
                 } catch (SQLException e) {
-                    JOptionPane.showMessageDialog(this,
-                            "Error updating bill status: " + e.getMessage(),
-                            "Database Error",
-                            JOptionPane.ERROR_MESSAGE);
+                    showErrorDialog("Error updating bill status: " + e.getMessage());
                 }
             }
         } else {
-            JOptionPane.showMessageDialog(this, "Please select a bill to update.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            showWarningDialog("Please select a bill to update.");
         }
     }
 
@@ -670,7 +1011,7 @@ public class BillingPanel extends JPanel {
         if (selectedRow >= 0) {
             int confirm = JOptionPane.showConfirmDialog(
                     this,
-                    "Are you sure you want to delete this bill? This action cannot be undone.",
+                    "Are you sure you want to delete this bill?\nThis action cannot be undone.",
                     "Confirm Delete",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE
@@ -685,16 +1026,13 @@ public class BillingPanel extends JPanel {
                     billItemsModel.setRowCount(0);
                     updateTotalRevenue();
 
-                    JOptionPane.showMessageDialog(this, "Bill deleted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    showSuccessDialog("Bill deleted successfully!");
                 } catch (SQLException e) {
-                    JOptionPane.showMessageDialog(this,
-                            "Error deleting bill: " + e.getMessage(),
-                            "Database Error",
-                            JOptionPane.ERROR_MESSAGE);
+                    showErrorDialog("Error deleting bill: " + e.getMessage());
                 }
             }
         } else {
-            JOptionPane.showMessageDialog(this, "Please select a bill to delete.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            showWarningDialog("Please select a bill to delete.");
         }
     }
 
@@ -702,7 +1040,6 @@ public class BillingPanel extends JPanel {
         try {
             Long appointmentId;
             
-            // Use selected appointment ID if available, otherwise use spinner value
             if (selectedAppointmentId != null) {
                 appointmentId = selectedAppointmentId;
             } else {
@@ -710,14 +1047,12 @@ public class BillingPanel extends JPanel {
             }
             
             String insurance = insuranceField.getText().trim();
-
-            if (insurance.isEmpty()) {
-                insurance = null; // For direct pay
+            if (insurance.equals("Insurance details (optional)") || insurance.isEmpty()) {
+                insurance = null;
             }
 
             MasterBill masterBill = billingService.createMasterBill(appointmentId, insurance);
 
-            // Add the new bill to the table
             Object[] row = {
                 masterBill.getBillId(),
                 masterBill.getAppointmentId(),
@@ -731,50 +1066,46 @@ public class BillingPanel extends JPanel {
             updateTotalRevenue();
             clearBillForm();
 
-            JOptionPane.showMessageDialog(this,
-                    "Bill created successfully!\nBill ID: " + masterBill.getBillId(),
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE);
+            showSuccessDialog("Bill created successfully!\nBill ID: " + masterBill.getBillId());
 
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Error creating bill: " + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Error creating bill: " + e.getMessage());
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Invalid input: " + e.getMessage(),
-                    "Input Error",
-                    JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Invalid input: " + e.getMessage());
         }
     }
 
     private void clearBillForm() {
         appointmentIdSpinner.setValue(1);
-        insuranceField.setText("");
-        itemDescriptionField.setText("");
-        itemCostField.setText("");
+        resetTextFieldPlaceholder(insuranceField, "Insurance details (optional)");
+        resetTextFieldPlaceholder(itemDescriptionField, "Item description");
+        resetTextFieldPlaceholder(itemCostField, "0.00");
         itemTypeCombo.setSelectedIndex(0);
         
-        // Clear appointment search
-        appointmentSearchField.setText("");
+        resetTextFieldPlaceholder(appointmentSearchField, "Search by appointment ID");
         appointmentSearchModel.setRowCount(0);
-        selectedAppointmentLabel.setText("No appointment selected.");
+        selectedAppointmentLabel.setText("No appointment selected");
         selectedAppointmentId = null;
+    }
+
+    private void resetTextFieldPlaceholder(JTextField field, String placeholder) {
+        field.setText(placeholder);
+        field.setForeground(Color.GRAY);
     }
 
     private void addItemToBill() {
         int selectedRow = billsTable.getSelectedRow();
         if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a bill first.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            showWarningDialog("Please select a bill first.");
             return;
         }
 
         String description = itemDescriptionField.getText().trim();
         String costText = itemCostField.getText().trim();
 
-        if (description.isEmpty() || costText.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter both description and cost.", "Missing Information", JOptionPane.WARNING_MESSAGE);
+        if (description.equals("Item description") || description.isEmpty() || 
+            costText.equals("0.00") || costText.isEmpty()) {
+            showWarningDialog("Please enter both description and cost.");
             return;
         }
 
@@ -785,35 +1116,27 @@ public class BillingPanel extends JPanel {
 
             billingService.addBillItem(billId, itemType, description, cost);
 
-            // Refresh the bill items display
             loadBillItemsForSelectedBill();
-
-            // Update the total in the bills table
             Bill updatedBill = billingService.getBillById(billId);
             billsModel.setValueAt("$" + updatedBill.getTotalAmount().toString(), selectedRow, 2);
 
-            // Clear form
-            itemDescriptionField.setText("");
-            itemCostField.setText("");
+            resetTextFieldPlaceholder(itemDescriptionField, "Item description");
+            resetTextFieldPlaceholder(itemCostField, "0.00");
 
             updateTotalRevenue();
-
-            JOptionPane.showMessageDialog(this, "Item added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            showSuccessDialog("Item added successfully!");
 
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Please enter a valid cost amount.", "Invalid Cost", JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Please enter a valid cost amount.");
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Error adding bill item: " + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Error adding bill item: " + e.getMessage());
         }
     }
 
     private void processSelectedBillClaim(JTextArea resultsArea) {
         int selectedRow = billsTable.getSelectedRow();
         if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a bill first.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            showWarningDialog("Please select a bill first.");
             return;
         }
 
@@ -821,12 +1144,12 @@ public class BillingPanel extends JPanel {
         String provider = insuranceProviderField.getText().trim();
         String policyNumber = policyNumberField.getText().trim();
 
+        if (provider.equals("Provider name")) provider = "";
+        if (policyNumber.equals("Policy number")) policyNumber = "";
+
         if ("INSURANCE".equals(claimType) || "PARTIAL_INSURANCE".equals(claimType)) {
             if (provider.isEmpty() || policyNumber.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Please enter insurance provider and policy number for insurance claims.",
-                        "Missing Information",
-                        JOptionPane.WARNING_MESSAGE);
+                showWarningDialog("Please enter insurance provider and policy number for insurance claims.");
                 return;
             }
         }
@@ -838,241 +1161,202 @@ public class BillingPanel extends JPanel {
 
             ClaimResult result = billingService.processClaim(masterBill, claimType, provider, policyNumber);
 
-            // Display results
+            // Display results with enhanced formatting
             StringBuilder output = new StringBuilder();
-            output.append("=== CLAIM PROCESSING RESULT ===\n");
-            output.append("Bill ID: ").append(billId).append("\n");
-            output.append("Claim Type: ").append(claimType).append("\n");
-            output.append("Insurance Provider: ").append(provider.isEmpty() ? "N/A" : provider).append("\n");
-            output.append("Policy Number: ").append(policyNumber.isEmpty() ? "N/A" : policyNumber).append("\n");
-            output.append("Status: ").append(result.isApproved() ? "APPROVED" : "REJECTED").append("\n");
-            output.append("Message: ").append(result.getMessage()).append("\n");
+            output.append("╔══════════════════════════════════════╗\n");
+            output.append("║          CLAIM PROCESSING RESULT     ║\n");
+            output.append("╚══════════════════════════════════════╝\n\n");
+            output.append("📄 Bill ID: ").append(billId).append("\n");
+            output.append("🏥 Claim Type: ").append(claimType).append("\n");
+            output.append("🏢 Insurance Provider: ").append(provider.isEmpty() ? "N/A" : provider).append("\n");
+            output.append("📋 Policy Number: ").append(policyNumber.isEmpty() ? "N/A" : policyNumber).append("\n");
+            output.append("📊 Status: ").append(result.isApproved() ? "✅ APPROVED" : "❌ REJECTED").append("\n");
+            output.append("💬 Message: ").append(result.getMessage()).append("\n");
 
             if (result.isApproved()) {
-                output.append("Approved Amount: $").append(result.getApprovedAmount()).append("\n");
+                output.append("💰 Approved Amount: $").append(result.getApprovedAmount()).append("\n");
                 if (result.getPatientResponsibility().compareTo(BigDecimal.ZERO) > 0) {
-                    output.append("Patient Responsibility: $").append(result.getPatientResponsibility()).append("\n");
+                    output.append("👤 Patient Responsibility: $").append(result.getPatientResponsibility()).append("\n");
                 }
             }
 
             if (result.getProcessingNotes() != null) {
-                output.append("Notes: ").append(result.getProcessingNotes()).append("\n");
+                output.append("📝 Notes: ").append(result.getProcessingNotes()).append("\n");
             }
 
-            output.append("\n");
+            output.append("\n" + "=".repeat(50) + "\n\n");
             resultsArea.append(output.toString());
             resultsArea.setCaretPosition(resultsArea.getDocument().getLength());
 
-            // Update bill status if approved
             if (result.isApproved()) {
                 billingService.updateBillStatus(billId, "APPROVED");
                 billsModel.setValueAt("APPROVED", selectedRow, 3);
             }
 
         } catch (SQLException e) {
-            resultsArea.append("ERROR: " + e.getMessage() + "\n\n");
-            JOptionPane.showMessageDialog(this,
-                    "Error processing claim: " + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
+            resultsArea.append("❌ ERROR: " + e.getMessage() + "\n\n");
+            showErrorDialog("Error processing claim: " + e.getMessage());
         }
     }
 
     private void processComplexBill(JTextArea resultsArea) {
         int selectedRow = billsTable.getSelectedRow();
         if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a bill first.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            showWarningDialog("Please select a bill first.");
             return;
         }
 
-        // Ask user which decorators to apply
+        // Enhanced decorator selection dialog
+        JDialog decoratorDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Bill Processing Options", true);
+        decoratorDialog.setSize(400, 300);
+        decoratorDialog.setLocationRelativeTo(this);
+        decoratorDialog.getContentPane().setBackground(BACKGROUND_GRAY);
+
+        JPanel dialogContent = new JPanel(new BorderLayout(0, 16));
+        dialogContent.setBorder(new EmptyBorder(20, 20, 20, 20));
+        dialogContent.setBackground(BACKGROUND_GRAY);
+
+        JLabel dialogTitle = new JLabel("Select Processing Options");
+        dialogTitle.setFont(HEADER_FONT);
+        dialogTitle.setForeground(PRIMARY_BLUE);
+        dialogContent.add(dialogTitle, BorderLayout.NORTH);
+
+        JPanel checkPanel = createStyledPanel(null);
+        checkPanel.setLayout(new GridLayout(3, 1, 0, 8));
+
         JCheckBox discountCheck = new JCheckBox("Apply Senior Citizen Discount (10%)");
         JCheckBox taxCheck = new JCheckBox("Apply State Tax (8.25%)");
         JCheckBox lateFeeCheck = new JCheckBox("Check for Late Fees");
 
-        JPanel checkPanel = new JPanel(new GridLayout(3, 1));
+        styleCheckBox(discountCheck);
+        styleCheckBox(taxCheck);
+        styleCheckBox(lateFeeCheck);
+
         checkPanel.add(discountCheck);
         checkPanel.add(taxCheck);
         checkPanel.add(lateFeeCheck);
 
-        int option = JOptionPane.showConfirmDialog(
-                this,
-                checkPanel,
-                "Select Bill Processing Options",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-        );
+        dialogContent.add(checkPanel, BorderLayout.CENTER);
 
-        if (option == JOptionPane.OK_OPTION) {
-            try {
-                Long billId = (Long) billsModel.getValueAt(selectedRow, 0);
-                Bill bill = billingService.getBillById(billId);
-                MasterBill masterBill = billingService.convertFromDbBill(bill);
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.setBackground(BACKGROUND_GRAY);
+        
+        JButton processButton = createStyledButton("Process", ACCENT_GREEN);
+        JButton cancelButton = createStyledButton("Cancel", Color.GRAY);
+        
+        buttonPanel.add(processButton);
+        buttonPanel.add(cancelButton);
+        dialogContent.add(buttonPanel, BorderLayout.SOUTH);
 
-                // Store original total for comparison
-                BigDecimal originalTotal = masterBill.getCost();
+        decoratorDialog.add(dialogContent);
 
-                // Process with decorators
-                MasterBill processedBill = billingService.processComplexBill(
-                        masterBill,
-                        discountCheck.isSelected(),
-                        taxCheck.isSelected(),
-                        lateFeeCheck.isSelected()
-                );
+        processButton.addActionListener(e -> {
+            decoratorDialog.dispose();
+            executeComplexBillProcessing(selectedRow, discountCheck.isSelected(), 
+                    taxCheck.isSelected(), lateFeeCheck.isSelected(), resultsArea);
+        });
+        
+        cancelButton.addActionListener(e -> decoratorDialog.dispose());
+        
+        decoratorDialog.setVisible(true);
+    }
 
-                // Display processing results
-                StringBuilder output = new StringBuilder();
-                output.append("=== COMPLEX BILL PROCESSING ===\n");
-                output.append("Bill ID: ").append(billId).append("\n");
-                output.append("Original Total: $").append(originalTotal).append("\n");
-                output.append("Processed Total: $").append(processedBill.getCost()).append("\n");
-                output.append("Difference: $").append(processedBill.getCost().subtract(originalTotal)).append("\n");
-                output.append("\nApplied Decorators:\n");
+    private void styleCheckBox(JCheckBox checkBox) {
+        checkBox.setFont(DATA_FONT);
+        checkBox.setBackground(SECONDARY_WHITE);
+        checkBox.setForeground(TEXT_DARK);
+        checkBox.setBorder(new EmptyBorder(8, 8, 8, 8));
+    }
 
-                if (discountCheck.isSelected()) {
-                    output.append("- Senior Citizen Discount (10%)\n");
-                }
-                if (taxCheck.isSelected()) {
-                    output.append("- State Tax (8.25%)\n");
-                }
-                if (lateFeeCheck.isSelected()) {
-                    output.append("- Late Fee Check\n");
-                }
+    private void executeComplexBillProcessing(int selectedRow, boolean discount, boolean tax, boolean lateFee, JTextArea resultsArea) {
+        try {
+            Long billId = (Long) billsModel.getValueAt(selectedRow, 0);
+            Bill bill = billingService.getBillById(billId);
+            MasterBill masterBill = billingService.convertFromDbBill(bill);
 
-                output.append("\nBill Structure:\n");
-                processedBill.print("");
+            BigDecimal originalTotal = masterBill.getCost();
 
-                output.append("\n");
-                resultsArea.append(output.toString());
-                resultsArea.setCaretPosition(resultsArea.getDocument().getLength());
+            MasterBill processedBill = billingService.processComplexBill(masterBill, discount, tax, lateFee);
 
-                // Update the displayed bill amount
-                billsModel.setValueAt("$" + processedBill.getCost().toString(), selectedRow, 2);
+            // Enhanced results display
+            StringBuilder output = new StringBuilder();
+            output.append("╔══════════════════════════════════════╗\n");
+            output.append("║       COMPLEX BILL PROCESSING        ║\n");
+            output.append("╚══════════════════════════════════════╝\n\n");
+            output.append("📄 Bill ID: ").append(billId).append("\n");
+            output.append("💰 Original Total: $").append(originalTotal).append("\n");
+            output.append("💯 Processed Total: $").append(processedBill.getCost()).append("\n");
+            
+            BigDecimal difference = processedBill.getCost().subtract(originalTotal);
+            String diffIcon = difference.compareTo(BigDecimal.ZERO) >= 0 ? "📈" : "📉";
+            output.append(diffIcon).append(" Difference: $").append(difference).append("\n\n");
+            
+            output.append("🔧 Applied Decorators:\n");
+            if (discount) output.append("  • Senior Citizen Discount (10%)\n");
+            if (tax) output.append("  • State Tax (8.25%)\n");
+            if (lateFee) output.append("  • Late Fee Check\n");
 
-                // Refresh bill items display
-                loadBillItemsForSelectedBill();
-                updateTotalRevenue();
+            output.append("\n📊 Bill Structure:\n");
+            processedBill.print("");
 
-            } catch (SQLException e) {
-                resultsArea.append("ERROR: " + e.getMessage() + "\n\n");
-                JOptionPane.showMessageDialog(this,
-                        "Error processing complex bill: " + e.getMessage(),
-                        "Database Error",
-                        JOptionPane.ERROR_MESSAGE);
-            }
+            output.append("\n" + "=".repeat(50) + "\n\n");
+            resultsArea.append(output.toString());
+            resultsArea.setCaretPosition(resultsArea.getDocument().getLength());
+
+            billsModel.setValueAt("$" + processedBill.getCost().toString(), selectedRow, 2);
+            loadBillItemsForSelectedBill();
+            updateTotalRevenue();
+
+        } catch (SQLException e) {
+            resultsArea.append("❌ ERROR: " + e.getMessage() + "\n\n");
+            showErrorDialog("Error processing complex bill: " + e.getMessage());
         }
     }
 
     private void updateTotalRevenue() {
         try {
             BigDecimal totalRevenue = billingService.calculateTotalRevenue();
-            totalRevenueLabel.setText("Total Revenue (Paid Bills): $" + totalRevenue.toString());
+            totalRevenueLabel.setText("💰 Total Revenue (Paid Bills): $" + totalRevenue.toString());
         } catch (SQLException e) {
-            totalRevenueLabel.setText("Total Revenue: Error calculating");
+            totalRevenueLabel.setText("💰 Total Revenue: Error calculating");
         }
     }
 
-    /**
-     * Refresh the entire bills table from the database
-     */
     private void refreshBillsTable() {
         try {
             loadBillsData();
             updateTotalRevenue();
             
-            // Clear bill items table if no bill is selected
             int selectedRow = billsTable.getSelectedRow();
             if (selectedRow < 0) {
                 billItemsModel.setRowCount(0);
             }
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Error refreshing bills table: " + e.getMessage(),
-                    "Refresh Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
-    
-    /**
-     * Refresh all bill data from the database and recalculate totals
-     */
-    private void refreshAllBillData() {
-        try {
-            // Show progress dialog
-            JDialog progressDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Refreshing Data", true);
-            progressDialog.setLayout(new BorderLayout());
-            progressDialog.add(new JLabel("Refreshing all bill data from database..."), BorderLayout.CENTER);
-            progressDialog.setSize(300, 100);
-            progressDialog.setLocationRelativeTo(this);
-            
-            // Run the refresh operation in a background thread
-            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-                @Override
-                protected Void doInBackground() throws Exception {
-                    billingService.refreshAllBillData();
-                    return null;
-                }
-                
-                @Override
-                protected void done() {
-                    progressDialog.dispose();
-                    try {
-                        get(); // Check for exceptions
-                        refreshBillsTable();
-                        JOptionPane.showMessageDialog(BillingPanel.this,
-                                "All bill data refreshed successfully!",
-                                "Refresh Complete",
-                                JOptionPane.INFORMATION_MESSAGE);
-                    } catch (Exception e) {
-                        JOptionPane.showMessageDialog(BillingPanel.this,
-                                "Error refreshing bill data: " + e.getMessage(),
-                                "Refresh Error",
-                                JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-            };
-            
-            worker.execute();
-            progressDialog.setVisible(true);
-            
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Error refreshing all bill data: " + e.getMessage(),
-                    "Refresh Error",
-                    JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Error refreshing bills table: " + e.getMessage());
         }
     }
 
-    /**
-     * Search for appointments based on the search criteria
-     */
     private void searchAppointments() {
         String searchText = appointmentSearchField.getText().trim();
         
-        if (searchText.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter an appointment ID to search.", "Empty Search", JOptionPane.WARNING_MESSAGE);
+        if (searchText.equals("Search by appointment ID") || searchText.isEmpty()) {
+            showWarningDialog("Please enter an appointment ID to search.");
             return;
         }
         
         try {
             appointmentSearchModel.setRowCount(0);
             
-            // Try to parse as appointment ID first
             try {
                 Long appointmentId = Long.parseLong(searchText);
                 com.globemed.database.AppointmentDAO appointmentDAO = new com.globemed.database.AppointmentDAO();
                 com.globemed.database.PatientDAO patientDAO = new com.globemed.database.PatientDAO();
-                com.globemed.database.StaffDAO staffDAO = new com.globemed.database.StaffDAO();
                 
                 com.globemed.models.Appointment appointment = appointmentDAO.getAppointmentById(appointmentId);
                 
                 if (appointment != null) {
-                    // Get patient and staff details
                     com.globemed.models.Patient patient = patientDAO.getPatientById(appointment.getPatientId());
-                    com.globemed.models.Staff staff = staffDAO.getStaffById(appointment.getStaffId());
-                    
                     String patientName = patient != null ? patient.getName() : "Unknown Patient";
-                    String doctorName = staff != null ? staff.getName() : "Unknown Doctor";
                     
                     Object[] row = {
                         appointment.getId(),
@@ -1083,25 +1367,18 @@ public class BillingPanel extends JPanel {
                     };
                     appointmentSearchModel.addRow(row);
                 } else {
-                    JOptionPane.showMessageDialog(this, "No appointment found with ID: " + appointmentId, "No Results", JOptionPane.INFORMATION_MESSAGE);
+                    showInfoDialog("No appointment found with ID: " + appointmentId);
                 }
                 
             } catch (NumberFormatException e) {
-                // If not a number, search by patient name or other criteria
-                JOptionPane.showMessageDialog(this, "Please enter a valid appointment ID (number).", "Invalid Search", JOptionPane.WARNING_MESSAGE);
+                showWarningDialog("Please enter a valid appointment ID (number).");
             }
             
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Error searching appointments: " + e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
+            showErrorDialog("Error searching appointments: " + e.getMessage());
         }
     }
 
-    /**
-     * Handle appointment selection from the search results
-     */
     private void selectAppointment() {
         int selectedRow = appointmentSearchResultsTable.getSelectedRow();
         if (selectedRow >= 0) {
@@ -1113,7 +1390,36 @@ public class BillingPanel extends JPanel {
             
             selectedAppointmentId = appointmentId;
             appointmentIdSpinner.setValue(appointmentId.intValue());
-            selectedAppointmentLabel.setText("ID: " + appointmentId + " | Patient: " + patientName + " | " + date + " " + time + " | " + status);
+            selectedAppointmentLabel.setText("✅ ID: " + appointmentId + " | " + patientName + " | " + date + " " + time);
         }
+    }
+
+    // Enhanced dialog methods
+    private void showSuccessDialog(String message) {
+        JOptionPane optionPane = new JOptionPane(message, JOptionPane.INFORMATION_MESSAGE);
+        JDialog dialog = optionPane.createDialog(this, "Success");
+        dialog.getContentPane().setBackground(BACKGROUND_GRAY);
+        dialog.setVisible(true);
+    }
+
+    private void showErrorDialog(String message) {
+        JOptionPane optionPane = new JOptionPane(message, JOptionPane.ERROR_MESSAGE);
+        JDialog dialog = optionPane.createDialog(this, "Error");
+        dialog.getContentPane().setBackground(BACKGROUND_GRAY);
+        dialog.setVisible(true);
+    }
+
+    private void showWarningDialog(String message) {
+        JOptionPane optionPane = new JOptionPane(message, JOptionPane.WARNING_MESSAGE);
+        JDialog dialog = optionPane.createDialog(this, "Warning");
+        dialog.getContentPane().setBackground(BACKGROUND_GRAY);
+        dialog.setVisible(true);
+    }
+
+    private void showInfoDialog(String message) {
+        JOptionPane optionPane = new JOptionPane(message, JOptionPane.INFORMATION_MESSAGE);
+        JDialog dialog = optionPane.createDialog(this, "Information");
+        dialog.getContentPane().setBackground(BACKGROUND_GRAY);
+        dialog.setVisible(true);
     }
 }

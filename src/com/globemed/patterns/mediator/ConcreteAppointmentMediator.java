@@ -141,6 +141,37 @@ public class ConcreteAppointmentMediator implements AppointmentMediator {
         }
     }
 
+    public boolean updateAppointmentStatus(Long appointmentId, String newStatus) {
+        try {
+            Appointment appointment = appointmentDAO.getAppointmentById(appointmentId);
+            if (appointment == null) {
+                notifyComponents("STATUS_UPDATE_FAILED", "Appointment not found");
+                return false;
+            }
+
+            String oldStatus = appointment.getStatus();
+            
+            // Update appointment status
+            appointment.setStatus(newStatus);
+            boolean success = appointmentDAO.updateAppointment(appointment);
+
+            if (success) {
+                notifyComponents("APPOINTMENT_STATUS_UPDATED", appointment);
+                appointmentSubject.notifyAppointmentUpdated(appointment, appointment.getAppointmentTime(), appointment.getLocation());
+                
+                // Log the status change
+                System.out.println("Appointment " + appointmentId + " status changed from " + oldStatus + " to " + newStatus);
+            }
+
+            return success;
+
+        } catch (SQLException e) {
+            System.err.println("Error updating appointment status: " + e.getMessage());
+            notifyComponents("STATUS_UPDATE_ERROR", e.getMessage());
+            return false;
+        }
+    }
+
     @Override
     public List<Appointment> getAvailableSlots(Long staffId, LocalDateTime date) {
         try {
